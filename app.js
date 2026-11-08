@@ -138,7 +138,7 @@ function renderPlatformEntry() {
   return `<section class="platform-entry" aria-labelledby="platform-entry-title">
     <div class="platform-entry-art">${animal(getHero(save.selectedHero))}</div>
     <div><span class="little-eyebrow">第1关 · 青芽果园 · 2屏卷轴关卡</span><h2 id="platform-entry-title">水果跳跳乐</h2><p>← → 左右移动，Space跳跃，J发射水果。跳上平台，抵达城堡！</p><p>${affordable ? '3颗桃心 · 20只小怪，击败不重生 · 可以踩怪和打蚊子' : `还差${ENTRY_COST-save.diamonds}个钻石，先做几道口算吧！`}</p></div>
-    <div class="platform-entry-actions"><button class="primary-button" data-action="platform-start" ${!affordable || platformStarting ? 'disabled' : ''}>${platformStarting ? '正在准备果园…' : '开始冒险 · 10钻石'}</button>${active ? `<button class="text-button" data-action="platform-resume">继续${getHero(save.platformRun.heroId).name}的冒险（已付费）</button>` : ''}</div>
+    <div class="platform-entry-actions"><button class="primary-button" data-action="platform-start" ${!affordable || platformStarting ? 'disabled' : ''}>${platformStarting ? '正在准备果园…' : (ENTRY_COST===0?'开始冒险 · 免费测试':`开始冒险 · ${ENTRY_COST}钻石`)}</button>${active ? `<button class="text-button" data-action="platform-resume">继续${getHero(save.platformRun.heroId).name}的冒险</button>` : ''}</div>
   </section>`;
 }
 
@@ -160,7 +160,7 @@ function renderPlatform() {
 
 async function startPlatformer() {
   if (!save || platformStarting || refreshStudy()) return;
-  if (save.diamonds < ENTRY_COST) { toast('需要10个钻石，先做几道口算吧！'); return; }
+  if (save.diamonds < ENTRY_COST) { toast(`需要${ENTRY_COST}个钻石，先做几道口算吧！`); return; }
   platformStarting = true;
   platformController?.pause();
   const launchButton = app.querySelector('[data-action="platform-start"]');
@@ -171,7 +171,7 @@ async function startPlatformer() {
     const hero = getHero(save.selectedHero);
     const assets = await preparePlatformer(hero);
     const next = buyPlatformRun(save, hero.id, assets.level);
-    if (!next) { toast('钻石不足10个，先去练习口算吧。'); return; }
+    if (!next) { toast('暂时无法开始，请刷新后再试。'); return; }
     await saveProgress(next);
     charged = true;
     platformController?.destroy(); platformController = null;

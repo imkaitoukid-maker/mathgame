@@ -30,10 +30,10 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
   let fireQueued=false;
   const effects=[];
   container.innerHTML=`<section class="platformer-card" aria-label="水果跳跳乐，第1关">
-    <div class="platform-hud"><h1>第1关 · ${level.title}</h1><div class="platform-hearts" role="img" aria-label="剩余3颗桃心"></div><div class="platform-counts"><span class="platform-ammo">🍎 水果 <b>0</b><small class="platform-refresh-badge" hidden>刷新暂停</small></span><span class="platform-enemies">击败 <b>0/${monsterProgress(state).total}</b></span><span class="platform-active">剩余 <b>${monsterProgress(state).active}</b></span><button class="platform-fullscreen-button" aria-label="游戏全屏" aria-pressed="false">⛶ 全屏</button><button class="platform-pause" aria-label="暂停游戏">Ⅱ</button></div></div>
+    <div class="platform-hud"><h1>第1关 · ${level.title}<small class="platform-pose-status" role="status">体感未开启</small></h1><div class="platform-hearts" role="img" aria-label="剩余3颗桃心"></div><div class="platform-counts"><span class="platform-ammo">🍎 水果 <b>0</b><small class="platform-refresh-badge" hidden>刷新暂停</small></span><span class="platform-enemies">击败 <b>0/${monsterProgress(state).total}</b></span><span class="platform-active">剩余 <b>${monsterProgress(state).active}</b></span><button class="platform-fullscreen-button" aria-label="游戏全屏" aria-pressed="false">⛶ 全屏</button><button class="platform-pause" aria-label="暂停游戏">Ⅱ</button></div></div>
     <div class="platform-route"><span>🌱 起点</span><div role="progressbar" aria-label="前往城堡的进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div><b class="platform-distance">0%</b><span>🏰 城堡</span></div>
-    <div class="platform-stage"><canvas id="platform-canvas" tabindex="0" role="application" aria-label="${heroName}的卷轴果园，左方向键向左，右方向键向右，松开停止，Space跳跃，J发射水果"></canvas><div class="platform-overlay" hidden role="dialog" aria-label="游戏暂停"><div class="platform-modal"><div class="platform-modal-icon" aria-hidden="true">🌱</div><h2></h2><p></p><button class="primary-button" data-platform-resume>继续冒险</button><button class="primary-button" data-platform-retry>再玩一局 · 10钻石</button><button class="text-button" data-platform-home>返回首页</button></div></div></div>
-    <div class="platform-instructions"><strong><kbd>←</kbd> 向左　<kbd>→</kbd> 向右 · 松开停止</strong><span><kbd>Space</kbd> 跳跃　<kbd>J</kbd> 发射 · 8格射程</span><span class="platform-paid">本局已付10钻石</span></div>
+    <div class="platform-stage"><canvas id="platform-canvas" tabindex="0" role="application" aria-label="${heroName}的卷轴果园，左方向键向左，右方向键向右，松开停止，Space跳跃，J发射水果"></canvas><div class="platform-overlay" hidden role="dialog" aria-label="游戏暂停"><div class="platform-modal"><div class="platform-modal-icon" aria-hidden="true">🌱</div><h2></h2><p></p><button class="primary-button" data-platform-resume>继续冒险</button><button class="primary-button" data-platform-retry>${ENTRY_COST===0?'再玩一局 · 免费测试':`再玩一局 · ${ENTRY_COST}钻石`}</button><button class="text-button" data-platform-home>返回首页</button></div></div></div>
+    <div class="platform-instructions"><strong><kbd>←</kbd> 向左　<kbd>→</kbd> 向右 · 松开停止</strong><span><kbd>Space</kbd> 跳跃　<kbd>J</kbd> 发射 · 8格射程</span><span class="platform-paid">${ENTRY_COST===0?'免费测试 · 不扣钻石':`本局已付${state.entryPaid}钻石`}</span></div>
     <div class="platform-bottom"><span class="platform-message" aria-live="polite">跳上平台、收集水果，向城堡出发！</span><div class="platform-touch-controls" aria-label="游戏操作"><button class="platform-pose" aria-label="打开体感校准">体感校准</button><button data-control="left" aria-label="按住向左">← 向左</button><button data-control="right" aria-label="按住向右">向右 →</button><button data-control="jump">跳跃 ↑</button><button data-control="fire">发射水果</button></div></div>
   </section>
   <section class="pose-calibration" role="dialog" aria-modal="true" aria-labelledby="pose-title" ${calibrationOpen?'':'hidden'}>
@@ -51,13 +51,14 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
   const dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=VIEW.width*dpr;canvas.height=VIEW.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;
   const route=container.querySelector('[role="progressbar"]'),distance=container.querySelector('.platform-distance');
   const poseModal=container.querySelector('.pose-calibration'),poseStart=container.querySelector('[data-pose-start]'),poseStatus=container.querySelector('.pose-status'),poseProgress=container.querySelector('.pose-progress'),poseVideo=container.querySelector('.pose-preview video'),poseButton=container.querySelector('.platform-pose');
+  const poseBadge=container.querySelector('.platform-pose-status');
   const poseSession=poseSessionFactory({
     video:poseVideo,
     onSample(sample){
       if(disposed||paused||!poseEnabled)return;
-      if(poseInput.receive(sample)){
+      if(poseInput.receive(sample)&&poseInput.tracked){
         const names={'throw-left':'向左转','throw-right':'向右转','raise-both':'跳跃','run':'原地跑，沿当前方向前进','fly':state.ammo.length?'飞翔，发射水果':'飞翔，请先收集水果'};
-        const action=sample.result?.events?.find(e=>names[e.id]);if(action)message.textContent='体感：'+names[action.id];
+        const action=sample.result?.events?.find(e=>names[e.id]);if(action){message.textContent='体感：'+names[action.id];const labels={'throw-left':'左手 · 向左转','throw-right':'右手 · 向右转','raise-both':'举手 · 跳跃',run:'原地跑 · 前进',fly:state.ammo.length?'飞翔 · 发射':'飞翔 · 没有水果'};poseBadge.textContent=labels[action.id];}
       }
     },
     onStatus(status){
@@ -68,13 +69,13 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
     },
     onCalibrated(){
       if(disposed)return;
-      poseEnabled=true;calibrationOpen=false;poseModal.hidden=true;poseButton.textContent='重新校准';poseInput.direction=state.player.dir;poseInput.clear(performance.now());
+      poseBadge.textContent='体感已连接';poseEnabled=true;calibrationOpen=false;poseModal.hidden=true;poseButton.textContent='重新校准';poseInput.direction=state.player.dir;poseInput.clear(performance.now());
       setPaused(false);canvas.focus({preventScroll:true});message.textContent='体感已就绪：侧挥转向，举手跳跃，原地跑前进，飞翔发射水果。';
     },
-    onLost(){poseInput.clear(performance.now());if(!disposed&&poseEnabled)message.textContent='未看见完整上半身，体感前进已停止；回到画面后可继续。';},
+    onLost(){poseInput.loseTracking();poseBadge.textContent='请让双臂入镜';if(!disposed&&poseEnabled)message.textContent='未看见双臂，体感输入已停止；回到画面后可继续。';},
     onError(text){
       if(disposed)return;
-      poseEnabled=false;calibrationOpen=true;poseModal.hidden=false;setPaused(true);poseStart.disabled=false;poseStart.textContent='重新尝试校准';poseStatus.textContent=text;poseProgress.value=0;poseVideo.parentElement.classList.remove('has-video');
+      poseBadge.textContent='体感未连接';poseEnabled=false;calibrationOpen=true;poseModal.hidden=false;setPaused(true);poseStart.disabled=false;poseStart.textContent='重新尝试校准';poseStatus.textContent=text;poseProgress.value=0;poseVideo.parentElement.classList.remove('has-video');
     },
   });
   function snapshot(){const copy=structuredClone(state);delete copy.events;return copy;}
@@ -101,7 +102,7 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
     overlay.querySelector('p').textContent=ended?(won?(hasNext?'正在前往下一关…':'抵达糖果城堡！第2关正在准备中。'):'试着跳上平台，从上方踩怪，或用J发射水果。'):'按住←或→移动，松开停止；Space跳跃，J朝面向方向发射水果。继续这一局不用再扣钻石。';
     resumeButton.hidden=ended;retryButton.hidden=!ended;
     retryButton.disabled=getBalance()<ENTRY_COST;
-    retryButton.textContent=getBalance()<ENTRY_COST?'钻石不足10个，先去练习口算吧':'再玩一局 · 10钻石';
+    retryButton.textContent=getBalance()<ENTRY_COST?`钻石不足${ENTRY_COST}个，先去练习口算吧`:(ENTRY_COST===0?'再玩一局 · 免费测试':`再玩一局 · ${ENTRY_COST}钻石`);
     pauseButton.disabled=ended;
     pauseButton.setAttribute('aria-label',paused?'继续游戏':'暂停游戏');pauseButton.textContent=paused?'▶':'Ⅱ';
   }
@@ -118,7 +119,7 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
     (calibrationOpen?poseStart:canvas).focus({preventScroll:true});
   });
   poseStart.addEventListener('click',()=>{if(!disposed)void poseSession.start();});
-  container.querySelector('[data-pose-keyboard]').addEventListener('click',()=>{poseSession.stop();poseEnabled=false;calibrationOpen=false;poseModal.hidden=true;poseButton.textContent='体感校准';setPaused(false);canvas.focus({preventScroll:true});});
+  container.querySelector('[data-pose-keyboard]').addEventListener('click',()=>{poseSession.stop();poseEnabled=false;calibrationOpen=false;poseModal.hidden=true;poseButton.textContent='体感校准';poseBadge.textContent='键盘操作';setPaused(false);canvas.focus({preventScroll:true});});
   poseButton.addEventListener('click',()=>{
     poseSession.stop();poseEnabled=false;calibrationOpen=true;poseModal.hidden=false;setPaused(true);poseStart.disabled=false;poseStart.textContent='开启摄像头并校准';poseProgress.value=0;poseStatus.textContent='双手自然下垂，稳定站好后开启校准。';poseVideo.parentElement.classList.remove('has-video');
   });

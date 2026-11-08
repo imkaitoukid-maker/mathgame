@@ -16,6 +16,8 @@ const median=values=>[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)];
 const upperPoints=[0,11,12,13,14,15,16];
 const visible=(l,ids)=>ids.every(i=>l[i]&&(l[i].visibility??1)>=.48&&(l[i].presence??1)>=.35);
 const inFrame=(l,ids)=>visible(l,ids)&&ids.every(i=>l[i].x>.015&&l[i].x<.985&&l[i].y>.015&&l[i].y<.985);
+// Calibration stays strict; gameplay tolerates small joint-edge jitter and head occlusion.
+const inControlFrame=(l,ids)=>visible(l,ids)&&ids.every(i=>Number.isFinite(l[i].x)&&Number.isFinite(l[i].y)&&l[i].x>-.015&&l[i].x<1.015&&l[i].y>-.015&&l[i].y<1.015);
 const FLIGHT_CONFIRM_MS=140,FLIGHT_EXIT_MS=420,PASSIVE_ARM_MS=160,CAST_CONFIRM_MS=100,CHEST_SUPPORT_MS=120;
 const HANDS_UP_CONFIRM_MS=120,HANDS_DOWN_CONFIRM_MS=180;
 // MediaPipe's anatomical arms: 11/13/15 are left, 12/14/16 are right.
@@ -32,7 +34,7 @@ export function measure(l,aspect=1){
   const hip={x:(waist[0].x+waist[1].x)/2,y:(waist[0].y+waist[1].y)/2};
   const head=inFrame(l,[0])?p[0]:null,upperBody=inFrame(l,upperPoints);
   const neutral=upperBody&&[0,1].every(s=>p[15+s].y>p[11+s].y+.65*torso)&&Math.abs(p[11].y-p[12].y)<.25*torso&&head.y<shoulder.y-.15*torso;
-  return {p,hip,waist,shoulder,head,torso,width,upperBody,neutral,
+  return {p,hip,waist,shoulder,head,torso,width,upperBody,controlReady:inControlFrame(l,[11,12,13,14,15,16]),controlQuality:[11,12,13,14,15,16].reduce((sum,i)=>sum+Math.min(l[i].visibility??1,l[i].presence??1),0)/6,neutral,
     quality:upperPoints.reduce((sum,i)=>sum+Math.min(l[i].visibility??1,l[i].presence??1),0)/upperPoints.length};
 }
 
@@ -64,7 +66,7 @@ export class MotionRecognizer {
     const armOK=[visible(l,[11,13,15]),visible(l,[12,14,16])];
     const levels=[0,1].map(s=>(p[15+s].y-p[11+s].y)/torso);
     // This global pose is evaluated before every flight/run/cast lock, including pending gestures.
-    const raised=armOK.every(Boolean)&&inFrame(l,[13,14,15,16])&&[0,1].every(s=>{
+    const raised=armOK.every(Boolean)&&inControlFrame(l,[13,14,15,16])&&[0,1].every(s=>{
       const rise=p[11+s].y-p[13+s].y,side=Math.abs(p[13+s].x-p[11+s].x);
       return levels[s]<-.65&&rise>.35*torso&&rise>side*.8;
     });
@@ -76,11 +78,11 @@ export class MotionRecognizer {
       this.clearFlight();this.clearRun();this.clearCast();
       scores['raise-both']=h.latched?1:clamp((t-h.since)/HANDS_UP_CONFIRM_MS);
       this.previous={m,t};
-      return {events,scores,active:h.latched?['raise-both']:[],quality:m.quality,upperBody:m.upperBody,armState:h.latched?'hands-up':'hands-up-candidate'};
+      return {events,scores,active:h.latched?['raise-both']:[],quality:m.quality,upperBody:m.upperBody,controlReady:m.controlReady,controlQuality:m.controlQuality,armState:h.latched?'hands-up':'hands-up-candidate'};
     }
     if(h.loweredSince!=null){
       h.loweredSince=null;this.clearFlight();this.clearRun();this.clearCast();this.previous={m,t};
-      return {events,scores,active:[],quality:m.quality,upperBody:m.upperBody,armState:'idle'};
+      return {events,scores,active:[],quality:m.quality,upperBody:m.upperBody,controlReady:m.controlReady,controlQuality:m.controlQuality,armState:'idle'};
     }
     const velocities=[0,1].map(s=>{
       if(!prev||!dt)return {x:0,y:0};
@@ -214,7 +216,7 @@ export class MotionRecognizer {
       }
     }
     this.previous={m,t};
-    return {events,scores,active:ACTIONS.filter(a=>this.entered[a.id]).map(a=>a.id),quality:m.quality,upperBody:m.upperBody,armState:f.state!=='idle'?f.state:this.entered.run?'running':'idle'};
+    return {events,scores,active:ACTIONS.filter(a=>this.entered[a.id]).map(a=>a.id),quality:m.quality,upperBody:m.upperBody,controlReady:m.controlReady,controlQuality:m.controlQuality,armState:f.state!=='idle'?f.state:this.entered.run?'running':'idle'};
   }
 }
 

@@ -1,4 +1,4 @@
-export const ENTRY_COST=10, FRUIT_RESPAWN=10000, MONSTER_TOTAL=20, MONSTER_LIMIT=20, MONSTER_EXIT_MS=1100;
+export const ENTRY_COST=0, FRUIT_RESPAWN=10000, MONSTER_TOTAL=20, MONSTER_LIMIT=20, MONSTER_EXIT_MS=1100;
 export const VIEW={width:1024,height:576};
 export const CHASE={range:176,verticalRange:56,duration:5000,cooldown:3000,speedFactor:1.5};
 export const FRUIT_KINDS=['apple','banana','pear','orange','grapes','strawberry','cherry'];
@@ -47,7 +47,7 @@ export function createPlatformRun(heroId,level,random=Math.random,id=globalThis.
 export function buyPlatformRun(save,heroId,level,random=Math.random){return !Number.isSafeInteger(save.diamonds)||save.diamonds<ENTRY_COST?null:{...save,diamonds:save.diamonds-ENTRY_COST,platformRun:createPlatformRun(heroId,level,random),lastView:'platform'};}
 
 export function normalizePlatformRun(v){
-  if(!v||![1,2,3].includes(v.version)||v.levelId!=='orchard-1'||v.entryPaid!==ENTRY_COST||typeof v.id!=='string'||!v.id||v.levelIndex!==0||!['playing','won','lost'].includes(v.status)||!Number.isInteger(v.hearts)||v.hearts<0||v.hearts>3||!Number.isFinite(v.elapsedMs)||v.elapsedMs<0)return null;
+  if(!v||![1,2,3].includes(v.version)||v.levelId!=='orchard-1'||![0,10].includes(v.entryPaid)||typeof v.id!=='string'||!v.id||v.levelIndex!==0||!['playing','won','lost'].includes(v.status)||!Number.isInteger(v.hearts)||v.hearts<0||v.hearts>3||!Number.isFinite(v.elapsedMs)||v.elapsedMs<0)return null;
   if(!v.player||![v.player.x,v.player.y,v.player.vy].every(Number.isFinite)||v.player.w!==28||v.player.h!==36||![-1,1].includes(v.player.dir))return null;
   if(![v.nextShotAt,v.invulnerableUntil,v.jumpQueuedUntil,v.coyoteUntil].every(Number.isFinite)||!Number.isSafeInteger(v.collected)||v.collected<0)return null;
   if(!Array.isArray(v.ammo)||!v.ammo.every(k=>FRUIT_KINDS.includes(k))||!Array.isArray(v.fruits)||!v.fruits.every(f=>FRUIT_KINDS.includes(f.kind)&&[f.x,f.y,f.respawnAt].every(Number.isFinite)&&typeof f.active==='boolean'))return null;
@@ -89,7 +89,7 @@ export function upgradePlatformRun(run,level){
     return copy;
   }
   const next=createPlatformRun(run.heroId,level,Math.random,run.id);
-  Object.assign(next,{hearts:run.hearts,ammo:[...run.ammo],collected:run.collected,fruitRefreshPaused:run.ammo.length>5||run.ammo.length===5&&!!run.fruitRefreshPaused,status:run.status,migrated:true});
+  Object.assign(next,{entryPaid:run.entryPaid,hearts:run.hearts,ammo:[...run.ammo],collected:run.collected,fruitRefreshPaused:run.ammo.length>5||run.ammo.length===5&&!!run.fruitRefreshPaused,status:run.status,migrated:true});
   return next;
 }
 export function queueJump(state){if(state.status==='playing')state.jumpQueuedUntil=state.elapsedMs+130;}

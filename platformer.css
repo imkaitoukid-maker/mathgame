@@ -70,3 +70,6 @@ body.platform-fullscreen-open { overflow: hidden; }
 .platform-fullscreen .platform-touch-controls button { padding: 8px 13px; }
 .platform-fullscreen .platform-overlay { z-index: 3; }
 @media(max-width:600px) { .platform-counts { flex-wrap: wrap; justify-content: center; }.platform-fullscreen-button { min-height: 31px; padding: 4px 8px; font-size: 12px; }.platform-fullscreen .platform-hud { gap: 5px; padding: 6px; }.platform-fullscreen .platform-counts { gap: 5px; }.platform-fullscreen .platform-bottom { padding: 6px; }.platform-fullscreen .platform-message { display: none; }.platform-fullscreen .platform-touch-controls { margin: auto; gap: 5px; }.platform-fullscreen .platform-touch-controls button { padding: 7px; font-size: 12px; } }
+
+.platform-pose-status { display: block; margin-top: 4px; font-size: 12px; font-weight: 600; color: #879d63; letter-spacing: 0; }
+.platform-fullscreen .platform-pose-status { font-size: clamp(12px,1vw,16px); }

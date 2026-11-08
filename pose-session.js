@@ -69,7 +69,7 @@ export class PoseSession {
     }
     const result=this.recognizer.update(pose,timestamp,aspect);
     this.onSample({result,timestamp,receivedAt:now,lastRunMotion:this.recognizer.run.lastMotion});
-    if(!measure(pose,aspect)?.upperBody){if(!this.lost){this.lost=true;this.onLost();}}
+    if(!measure(pose,aspect)?.controlReady){if(!this.lost){this.lost=true;this.onLost();}}
     else this.lost=false;
   }
   loop(){
