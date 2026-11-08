@@ -1,13 +1,14 @@
-import { HEROES, ENEMIES, ATTACK_DURATION, DIAMOND_DURATION, DIAMOND_STAGGER, createRound, getDecomposition, hasHint, toggleHint, getWrongAttempts, getReward, answerRound, advanceRound, summarizeRound, getFeedbackState, collectRoundReward } from './game.js';
+import { HEROES, ENEMIES, ROUND_LENGTH, upgradeRound, ATTACK_DURATION, DIAMOND_DURATION, DIAMOND_STAGGER, createRound, getDecomposition, hasHint, toggleHint, getWrongAttempts, getReward, answerRound, advanceRound, summarizeRound, getFeedbackState, collectRoundReward } from './game.js';
 import { loadSave, saveProgress } from './db.js';
 import { getProjectile, IMPACT_DELAY, getAttackTiming, VOLLEY_STAGGER } from './projectiles.js';
 import { retryRound } from './game.js';
 import { advanceStudyClock, finishStudyBreak } from './study.js';
 import { HOME_SECTIONS, getMode, getBreakTen } from './game.js';
 import { getHundredHint } from './hundred.js';
-import { ENTRY_COST, buyPlatformRun } from './platform-engine.js';
+import { ENTRY_COST, buyPlatformRun, isPlatformEnabled } from './platform-engine.js';
 import { preparePlatformer, mountPlatformer } from './platform-view.js';
 
+const platformEnabled=isPlatformEnabled(location.search);
 const app = document.querySelector('#app');
 const total = document.querySelector('#diamond-total');
 const announcer = document.querySelector('#announcer');
@@ -117,14 +118,14 @@ function renderLobby() {
     <section class="welcome-card" aria-labelledby="welcome-title">
       <span class="little-eyebrow"><span aria-hidden="true">✦</span> 今天也要闪闪发光</span>
       <h1 id="welcome-title">和小伙伴一起，<span>快乐学数学！</span></h1>
-      <p class="welcome-description">选一个喜欢的伙伴，开始10道题的数学冒险</p>
+      <p class="welcome-description">选一个喜欢的伙伴，开始${ROUND_LENGTH}道题的数学冒险</p>
       <div class="lesson-groups" role="group" aria-label="选择练习内容">${HOME_SECTIONS.map(section => `<section class="lesson-group" ${section.title ? `aria-label="${section.title}"` : 'aria-label="基础练习"'}>${section.title ? `<h2>${section.title}</h2>` : ''}<div class="mode-choices">${section.modeIds.map(id => { const mode = getMode(id); return `<button class="mode-choice ${save.selectedMode === mode.id ? 'selected' : ''}" data-mode="${mode.id}" aria-pressed="${save.selectedMode === mode.id}"><strong>${mode.shortName || mode.name}</strong><span>${mode.description}</span>${mode.example ? `<span class="mode-example">${mode.example}</span>` : ''}</button>`; }).join('')}</div></section>`).join('')}</div>
       <p class="oral-motto">十位和十位算，个位和个位算；<br class="mobile-break">个位不够减，向十位借1当10。</p>
       <div class="hero-choices" role="group" aria-label="选择本轮伙伴">
         ${HEROES.map(hero => `<button class="hero-choice ${save.selectedHero === hero.id ? 'selected' : ''}" data-hero="${hero.id}" aria-pressed="${save.selectedHero === hero.id}">${animal(hero)}<strong>${hero.name}</strong><span class="choice-check" aria-hidden="true">✓</span></button>`).join('')}
       </div>
       <div class="start-actions"><button class="primary-button" data-action="start">${active ? '开启新一轮' : '开始冒险'}<span aria-hidden="true"> →</span></button>${active ? `<button class="text-button" data-action="resume">继续上次冒险</button><span class="resume-mode">上次：${getMode(save.activeRound.modeId).name}</span>` : ''}</div>
-      <div class="welcome-rules"><span>10题一轮</span><i></i><span>点击💡看提示</span><i></i><span>${diamond} 收集钻石</span></div>
+      <div class="welcome-rules"><span>${ROUND_LENGTH}题一轮</span><i></i><span>点击💡看提示</span><i></i><span>${diamond} 收集钻石</span></div>
       <p class="reward-guide">每题答对得3个钻石，每答错一次，本题奖励少1个，最低0个。慢慢想，答对最重要。</p>
       <p class="reward-guide">每练习10分钟，休息5分钟，保护小眼睛。</p>
     </section>
@@ -133,6 +134,7 @@ function renderLobby() {
 }
 
 function renderPlatformEntry() {
+  if(!platformEnabled)return '';
   const active = save.platformRun?.status === 'playing';
   const affordable = save.diamonds >= ENTRY_COST;
   return `<section class="platform-entry" aria-labelledby="platform-entry-title">
@@ -159,6 +161,7 @@ function renderPlatform() {
 }
 
 async function startPlatformer() {
+  if(!platformEnabled)return;
   if (!save || platformStarting || refreshStudy()) return;
   if (save.diamonds < ENTRY_COST) { toast(`需要${ENTRY_COST}个钻石，先做几道口算吧！`); return; }
   platformStarting = true;
@@ -188,6 +191,7 @@ async function startPlatformer() {
 }
 
 async function resumePlatformer() {
+  if(!platformEnabled)return;
   if (!save?.platformRun || platformStarting || refreshStudy()) return;
   platformStarting = true;
   try {
@@ -202,7 +206,7 @@ function renderHistory() {
   if (!save.history.length) return '<p class="local-note">每一次进步，都为你记在这台设备上。</p>';
   return `<section class="history-section" aria-label="最近的冒险记录"><h2>我的冒险足迹<span>最近3次</span></h2><div class="history-grid">${save.history.slice(0, 3).map(record => {
     const date = new Date(record.completedAt).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-    return `<article class="history-item">${animal(getHero(record.heroId))}<div><time>${date}</time>${stars(record.stars)}</div><div class="history-score"><b>${record.correct}/10</b><span>${diamond}${record.diamonds >= 0 ? '+' : ''}${record.diamonds}</span></div></article>`;
+    return `<article class="history-item">${animal(getHero(record.heroId))}<div><time>${date}</time>${stars(record.stars)}</div><div class="history-score"><b>${record.correct}/${record.total??10}</b><span>${diamond}${record.diamonds >= 0 ? '+' : ''}${record.diamonds}</span></div></article>`;
   }).join('')}</div></section>`;
 }
 
@@ -258,7 +262,7 @@ function renderGame(animate = false) {
   const stateClass = feedback ? `animate-${feedback.correct ? 'correct' : 'wrong'}` : '';
   app.innerHTML = `
     <section class="game-card ${feedback ? 'answered' : ''}" aria-label="${question.lesson ? getMode(question.lesson).name : complement ? '10的分解' : question.operation === 'subtract' ? '破十减法' : '凑十加法'}答题游戏">
-      <span class="question-progress">第${round.index + 1}/10题<button class="hint-button ${showHint?'is-open':''}" data-action="toggle-hint" aria-label="${showHint?'收起解题提示':'显示解题提示'}" title="${showHint?'收起提示':'点亮小灯泡看提示'}" aria-controls="decomposition" aria-expanded="${showHint}" ${feedback?'disabled':''}>💡</button></span>
+      <span class="question-progress">第${round.index + 1}/${round.questions.length}题<button class="hint-button ${showHint?'is-open':''}" data-action="toggle-hint" aria-label="${showHint?'收起解题提示':'显示解题提示'}" title="${showHint?'收起提示':'点亮小灯泡看提示'}" aria-controls="decomposition" aria-expanded="${showHint}" ${feedback?'disabled':''}>💡</button></span>
       <div class="arena ${stateClass}" style="--feedback-age:${feedbackState?.age || 0}ms;--flight-duration:${feedback?.flightDuration || 750}ms;--impact-delay:${feedback?.impactDelay || IMPACT_DELAY}ms;--volley-tail:${volleyTail}ms;--last-impact-delay:${feedback?.lastImpactDelay || feedback?.impactDelay || IMPACT_DELAY}ms" aria-label="${hero.name}对战${enemy.name}">
         <span class="arena-spark spark-one" aria-hidden="true">✦</span><span class="arena-spark spark-two" aria-hidden="true">✦</span>
         <div class="fighter hero"><span class="grass"></span>${animal(hero)}</div>
@@ -273,7 +277,7 @@ function renderGame(animate = false) {
         let chosen = feedback && feedback.choice === option ? (feedback.correct ? ' chosen-correct' : ' chosen-wrong') : '';
         return `<button class="answer-button${chosen}" data-answer="${option}" ${feedback ? 'disabled' : ''} aria-label="答案${option}">${option}</button>`;
       }).join('')}</div>
-      <div class="game-footer">${feedback ? `<p class="feedback-message ${feedback.correct ? 'correct' : 'wrong'}" role="status">${feedback.correct ? (feedback.diamonds && feedback.rewardCollected !== false ? `答对啦！获得${feedback.diamonds}个钻石` : '答对啦！') : `再试一次，本题还可得${feedback.remainingReward??getReward(true,getWrongAttempts(round))}个钻石。`}</p>${feedback.correct ? `<span class="auto-next-note">${round.index === 9 ? '马上查看成绩…' : '马上开始下一题…'}</span>` : ''}` : `<p class="feedback-message">${round.retryMessage||`慢慢想，本题答对可得${getReward(true,getWrongAttempts(round))}个钻石。`}</p>`}</div>
+      <div class="game-footer">${feedback ? `<p class="feedback-message ${feedback.correct ? 'correct' : 'wrong'}" role="status">${feedback.correct ? (feedback.diamonds && feedback.rewardCollected !== false ? `答对啦！获得${feedback.diamonds}个钻石` : '答对啦！') : `再试一次，本题还可得${feedback.remainingReward??getReward(true,getWrongAttempts(round))}个钻石。`}</p>${feedback.correct ? `<span class="auto-next-note">${round.index === round.questions.length-1 ? '马上查看成绩…' : '马上开始下一题…'}</span>` : ''}` : `<p class="feedback-message">${round.retryMessage||`慢慢想，本题答对可得${getReward(true,getWrongAttempts(round))}个钻石。`}</p>`}</div>
     </section>`;
   if (feedback) requestAnimationFrame(() => app.querySelector('[data-action="next"]')?.focus({ preventScroll: true }));
   const arenaBox = app.querySelector('.arena').getBoundingClientRect();
@@ -342,11 +346,11 @@ function renderResult() {
   if (!round) { view = 'lobby'; render(); return; }
   const result = summarizeRound(round);
   app.innerHTML = `<section class="result-card" aria-labelledby="result-title">
-    <span class="little-eyebrow">10道题的冒险完成啦</span>
+    <span class="little-eyebrow">${result.total}道题的冒险完成啦</span>
     ${animal(getHero(round.heroId), 'result-animal')}
     <h1 id="result-title">${result.stars === 3 ? '太棒啦，全部答对！' : result.stars === 2 ? '真不错，继续加油！' : '每次练习，都在进步！'}</h1>
     ${stars(result.stars)}
-    <div class="result-stats"><div><b>${result.correct}<small>/10</small></b><span>一次答对</span></div><div><b>${result.defeated}</b><span>击败敌人</span></div><div class="earned-diamonds"><b>${diamond}${result.diamonds >= 0 ? '+' : ''}${result.diamonds}</b><span>本轮钻石</span></div></div>
+    <div class="result-stats"><div><b>${result.correct}<small>/${result.total}</small></b><span>一次答对</span></div><div><b>${result.defeated}</b><span>击败敌人</span></div><div class="earned-diamonds"><b>${diamond}${result.diamonds >= 0 ? '+' : ''}${result.diamonds}</b><span>本轮钻石</span></div></div>
     <p class="star-explanation">全对得3星，错1～3题得2星，其余得1星</p>
     ${result.wrong ? `<details class="mistake-review"><summary>看看这次的错题（${result.wrong}题）</summary><div>${(round.mistakes ? round.mistakes.map(index => round.questions[index]) : result.answers.filter(answer => !answer.correct)).map(answer => `<span>${reviewEquation(answer)}</span>`).join('')}</div></details>` : ''}
     <button class="primary-button" data-action="lobby">再来一轮<span aria-hidden="true"> →</span></button>
@@ -354,6 +358,7 @@ function renderResult() {
 }
 
 function render(animate = false) {
+  if(view==='platform'&&!platformEnabled)view='lobby';
   clearDiamondAnimations();
   document.body.classList.toggle('platform-mode', view === 'platform');
   if (view !== 'platform' && platformController) { save.platformRun = platformController.snapshot(); platformController.destroy(); platformController = null; }
@@ -597,11 +602,14 @@ window.addEventListener('pagehide', () => {
 
 async function boot() {
   save = await loadSave();
-  const round = save.activeRound;
-  if (round && Array.isArray(round.questions) && round.questions.length === 10 && round.index >= 0 && round.index < 10) {
+  const previousRound=save.activeRound;
+  const round = upgradeRound(previousRound);
+  if (round && round.index >= 0 && round.index < round.questions.length) {
+    save.activeRound=round;
     view = round.status === 'complete' ? 'result' : 'game';
   } else save.activeRound = null;
-  if (save.lastView === 'platform' && save.platformRun) {
+  if(round&&round!==previousRound)await persist();
+  if (platformEnabled && save.lastView === 'platform' && save.platformRun) {
     try { platformAssets = await preparePlatformer(getHero(save.platformRun.heroId)); platformResuming = true; view = 'platform'; }
     catch { view = 'lobby'; toast('果园资源暂未加载，进度仍然保留。'); }
   }

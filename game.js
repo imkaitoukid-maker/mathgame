@@ -19,7 +19,7 @@ export const ENEMIES = [
   { id: 'tiger', name: '小老虎', col: 1, row: 1 },
   { id: 'wolf', name: '小狼', col: 2, row: 1 },
 ];
-export const ROUND_LENGTH = 10;
+export const ROUND_LENGTH = 30;
 export const ATTACK_DURATION = getAttackTiming().attackDuration;
 export const DIAMOND_DURATION = 1670;
 export const DIAMOND_STAGGER = 80;
@@ -51,7 +51,21 @@ export function shuffled(values, random = Math.random) {
   return copy;
 }
 
-export function createQuestions(random = Math.random, modeId = 'within20') {
+function drawPairs(pool,count,random,previous=[]){
+  const key=q=>`${q.a},${q.b}`,selected=[],seen=new Set(previous.map(key));
+  while(selected.length<count){
+    let available=pool.filter(q=>!seen.has(key(q)));
+    if(!available.length){seen.clear();available=pool;}
+    const batch=shuffled(available,random),last=selected.at(-1)??previous.at(-1);
+    if(batch.length>1&&last&&key(batch[0])===key(last)){
+      const next=batch.findIndex(q=>key(q)!==key(last));[batch[0],batch[next]]=[batch[next],batch[0]];
+    }
+    for(const pair of batch){if(selected.length===count)break;selected.push(pair);seen.add(key(pair));}
+  }
+  return selected;
+}
+
+export function createQuestions(random = Math.random, modeId = 'within20', previous=[]) {
   // 加法练习个位进位；减法练习把十几拆成10和几后退位。
   const pool = [];
   const mode = getMode(modeId);
@@ -76,9 +90,9 @@ export function createQuestions(random = Math.random, modeId = 'within20') {
     }
   }
   const selected = hundred && mode.mixed
-    ? shuffled([...shuffled(pool.filter(q => q.b < 10), random).slice(0, ROUND_LENGTH / 2), ...shuffled(pool.filter(q => q.b >= 10), random).slice(0, ROUND_LENGTH / 2)], random)
-    : shuffled(pool, random).slice(0, ROUND_LENGTH);
-  return selected.map(({ a, b }) => {
+    ? shuffled([...drawPairs(pool.filter(q=>q.b<10),ROUND_LENGTH/2-previous.filter(q=>q.b<10).length,random,previous),...drawPairs(pool.filter(q=>q.b>=10),ROUND_LENGTH/2-previous.filter(q=>q.b>=10).length,random,previous)],random)
+    : drawPairs(pool,ROUND_LENGTH-previous.length,random,previous);
+  return [...previous,...selected.map(({ a, b }) => {
     const answer = complement ? b : subtract ? a - b : a + b;
     const distractors = [-3, -2, -1, 1, 2, 3]
       .map(offset => answer + offset)
@@ -89,7 +103,13 @@ export function createQuestions(random = Math.random, modeId = 'within20') {
       options: shuffled([answer, ...shuffled(distractors, random).slice(0, 2)], random),
       enemyId: ENEMIES[randomInt(0, ENEMIES.length - 1, random)].id,
     };
-  });
+  })];
+}
+
+export function upgradeRound(round,random=Math.random){
+  if(!round||!Array.isArray(round.questions)||![10,ROUND_LENGTH].includes(round.questions.length))return null;
+  if(round.questions.length===10&&round.status!=='complete')return {...round,questions:createQuestions(random,round.modeId,round.questions)};
+  return round;
 }
 
 export function createRound(heroId, now = Date.now(), random = Math.random, modeId = 'within20') {
@@ -214,7 +234,7 @@ export function collectRoundReward(round, now = Date.now()) {
 
 export function advanceRound(round, now = Date.now()) {
   if (round.status !== 'feedback' || !round.feedback?.correct) return round;
-  if (round.index === ROUND_LENGTH - 1) {
+  if (round.index === round.questions.length - 1) {
     return { ...round, status: 'complete', completedAt: now };
   }
   return { ...round, index: round.index + 1, status: 'playing', feedback: null, retryMessage: null, questionStartedAt: now };
@@ -233,6 +253,7 @@ export function summarizeRound(round) {
     id: round.id,
     heroId: round.heroId,
     modeId: getMode(round.modeId).id,
+    total: round.questions.length,
     correct,
     defeated,
     wrong,

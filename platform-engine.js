@@ -1,4 +1,5 @@
 export const ENTRY_COST=0, FRUIT_RESPAWN=10000, MONSTER_TOTAL=20, MONSTER_LIMIT=20, MONSTER_EXIT_MS=1100;
+export const isPlatformEnabled=search=>new URLSearchParams(search).get('a')==='1';
 export const VIEW={width:1024,height:576};
 export const CHASE={range:176,verticalRange:56,duration:5000,cooldown:3000,speedFactor:1.5};
 export const FRUIT_KINDS=['apple','banana','pear','orange','grapes','strawberry','cherry'];
