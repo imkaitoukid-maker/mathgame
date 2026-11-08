@@ -96,6 +96,7 @@ export class MotionRecognizer {
 
     // Keep flight's spread zone outside the chest-running zone; neither may trap the other in candidate.
     const outward=[0,1].map(s=>(p[15+s].x-p[11+s].x)*Math.sign(p[11+s].x-m.shoulder.x)/torso);
+    const coherentGap=clamp(dt*1500,100,250);
     const f=this.flight,bothOut=armOK.every(Boolean)&&outward.every(v=>v>.70);
     const coherent=bothOut&&velocities.every(v=>Math.abs(v.y)>.35/this.sensitivity)&&velocities[0].y*velocities[1].y>0;
 
@@ -106,7 +107,7 @@ export class MotionRecognizer {
       if(bothOut){
         f.lostSince=null;
         if(coherent){
-          if(f.motionSince==null||t-f.lastCoherent>100){f.motionSince=t;f.motionStart=[...levels];}
+          if(f.motionSince==null||t-f.lastCoherent>coherentGap){f.motionSince=t;f.motionStart=[...levels];}
           f.lastCoherent=t;
           const excursion=Math.min(...levels.map((v,s)=>Math.abs(v-f.motionStart[s])));
           scores.fly=clamp(Math.min((t-f.motionSince)/FLIGHT_CONFIRM_MS,excursion/.14))*.8;
@@ -114,7 +115,7 @@ export class MotionRecognizer {
             f.state='flying';f.lastMotion=t;f.history=[];f.direction=Math.sign(velocities[0].y+velocities[1].y);f.strokeOrigin=(levels[0]+levels[1])/2;
             this.clearCast();fire('fly',450);
           }
-        }else if(t-f.lastCoherent>100){f.motionSince=null;f.motionStart=null;}
+        }else if(t-f.lastCoherent>coherentGap){f.motionSince=null;f.motionStart=null;}
       }else{
         f.lostSince??=t;
         if(t-f.lostSince>=160){f.state='idle';f.motionSince=null;f.motionStart=null;this.clearCast();}

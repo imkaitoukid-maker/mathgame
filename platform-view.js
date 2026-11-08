@@ -39,10 +39,10 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
   <section class="pose-calibration" role="dialog" aria-modal="true" aria-labelledby="pose-title" ${calibrationOpen?'':'hidden'}>
     <div class="pose-modal"><span class="pose-eyebrow">动一动，和小伙伴一起冒险</span><h2 id="pose-title">先校准，再出发</h2><p class="pose-intro">让头、双肩、双肘和双手入镜，头顶和两侧留出活动空间。无需拍到腿部。</p>
       <div class="pose-calibration-body"><div class="pose-preview"><video muted playsinline aria-label="摄像头校准预览"></video><span class="pose-preview-placeholder">🌱<br>开启摄像头后<br>双手自然下垂，保持稳定</span></div>
-      <div class="pose-guide"><div><b>👈 左手侧挥</b><span>角色向左转</span></div><div><b>👉 右手侧挥</b><span>角色向右转</span></div><div><b>🙌 双手举过头顶</b><span>跳跃一次</span></div><div><b>🏃 胸前交替摆臂</b><span>沿面向方向前进</span></div></div></div>
+      <div class="pose-guide"><div><b>👈 左手侧挥</b><span>角色向左转</span></div><div><b>👉 右手侧挥</b><span>角色向右转</span></div><div><b>🙌 双手举过头顶</b><span>跳跃一次</span></div><div><b>🏃 胸前交替摆臂</b><span>沿面向方向前进</span></div><div><b>🕊️ 双臂飞翔</b><span>有水果时向面向方向发射</span></div></div></div>
       <p class="pose-status" role="status">准备好后开启摄像头，稳定站好即可完成校准。</p><progress class="pose-progress" max="1" value="0" aria-label="校准进度"></progress>
       <div class="pose-actions"><button class="primary-button" data-pose-start>开启摄像头并校准</button><button class="text-button" data-pose-keyboard>先用键盘玩</button></div>
-      <p class="pose-local-note">校准完成后自动收起。画面仅在浏览器本地识别，不录制、不上传。发射水果仍用 J 或下方按钮。</p>
+      <p class="pose-local-note">校准完成后自动收起。画面仅在浏览器本地识别，不录制、不上传。飞翔发射水果，也可用 J 或下方按钮。</p>
     </div>
   </section>`;
   const canvas=container.querySelector('canvas'),ctx=canvas.getContext('2d');
@@ -56,7 +56,7 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
     onSample(sample){
       if(disposed||paused||!poseEnabled)return;
       if(poseInput.receive(sample)){
-        const names={'throw-left':'向左转','throw-right':'向右转','raise-both':'跳跃','run':'原地跑，沿当前方向前进'};
+        const names={'throw-left':'向左转','throw-right':'向右转','raise-both':'跳跃','run':'原地跑，沿当前方向前进','fly':state.ammo.length?'飞翔，发射水果':'飞翔，请先收集水果'};
         const action=sample.result?.events?.find(e=>names[e.id]);if(action)message.textContent='体感：'+names[action.id];
       }
     },
@@ -69,7 +69,7 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
     onCalibrated(){
       if(disposed)return;
       poseEnabled=true;calibrationOpen=false;poseModal.hidden=true;poseButton.textContent='重新校准';poseInput.direction=state.player.dir;poseInput.clear(performance.now());
-      setPaused(false);canvas.focus({preventScroll:true});message.textContent='体感已就绪：侧挥转向，双手举高跳跃，原地跑前进。';
+      setPaused(false);canvas.focus({preventScroll:true});message.textContent='体感已就绪：侧挥转向，举手跳跃，原地跑前进，飞翔发射水果。';
     },
     onLost(){poseInput.clear(performance.now());if(!disposed&&poseEnabled)message.textContent='未看见完整上半身，体感前进已停止；回到画面后可继续。';},
     onError(text){
@@ -221,11 +221,11 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
       if(pose?.jump)queueJump(state);
       const manual=input.left||input.right;
       if(manual&&input.left!==input.right)poseInput.direction=input.left?-1:1;
-      const frameInput={...input,fire:input.fire||fireQueued};
+      const frameInput={...input,fire:input.fire||fireQueued||!!pose?.fire};
       if(pose&&!manual){frameInput.left=pose.move<0;frameInput.right=pose.move>0;frameInput.facing=pose.facing;}
       accumulator+=delta;
       while(accumulator>=1/120){
-        frameInput.fire=input.fire||fireQueued;
+        frameInput.fire=input.fire||fireQueued||!!pose?.fire;
         const events=stepPlatform(state,level,1/120,Math.random,frameInput);fireQueued=false;accumulator-=1/120;
         for(const event of events){
           if(['collect','defeat','hurt'].includes(event.type))effects.push({...event,x:event.x??state.player.x+14,y:event.y??state.player.y+10,born:now});

@@ -1,4 +1,4 @@
-import { HEROES, ENEMIES, HINT_DELAY, ATTACK_DURATION, DIAMOND_DURATION, DIAMOND_STAGGER, createRound, getDecomposition, hasHint, answerRound, advanceRound, summarizeRound, getFeedbackState, collectRoundReward } from './game.js';
+import { HEROES, ENEMIES, ATTACK_DURATION, DIAMOND_DURATION, DIAMOND_STAGGER, createRound, getDecomposition, hasHint, toggleHint, getWrongAttempts, getReward, answerRound, advanceRound, summarizeRound, getFeedbackState, collectRoundReward } from './game.js';
 import { loadSave, saveProgress } from './db.js';
 import { getProjectile, IMPACT_DELAY, getAttackTiming, VOLLEY_STAGGER } from './projectiles.js';
 import { retryRound } from './game.js';
@@ -124,8 +124,8 @@ function renderLobby() {
         ${HEROES.map(hero => `<button class="hero-choice ${save.selectedHero === hero.id ? 'selected' : ''}" data-hero="${hero.id}" aria-pressed="${save.selectedHero === hero.id}">${animal(hero)}<strong>${hero.name}</strong><span class="choice-check" aria-hidden="true">✓</span></button>`).join('')}
       </div>
       <div class="start-actions"><button class="primary-button" data-action="start">${active ? '开启新一轮' : '开始冒险'}<span aria-hidden="true"> →</span></button>${active ? `<button class="text-button" data-action="resume">继续上次冒险</button><span class="resume-mode">上次：${getMode(save.activeRound.modeId).name}</span>` : ''}</div>
-      <div class="welcome-rules"><span>10题一轮</span><i></i><span>自动分解提示</span><i></i><span>${diamond} 收集钻石</span></div>
-      <p class="reward-guide">5秒内答对得3个钻石，10秒内得2个，超过10秒得1个。</p>
+      <div class="welcome-rules"><span>10题一轮</span><i></i><span>点击💡看提示</span><i></i><span>${diamond} 收集钻石</span></div>
+      <p class="reward-guide">每题答对得3个钻石，每答错一次，本题奖励少1个，最低0个。慢慢想，答对最重要。</p>
       <p class="reward-guide">每练习10分钟，休息5分钟，保护小眼睛。</p>
     </section>
     ${renderPlatformEntry()}
@@ -137,7 +137,7 @@ function renderPlatformEntry() {
   const affordable = save.diamonds >= ENTRY_COST;
   return `<section class="platform-entry" aria-labelledby="platform-entry-title">
     <div class="platform-entry-art">${animal(getHero(save.selectedHero))}</div>
-    <div><span class="little-eyebrow">第1关 · 青芽果园 · 10屏卷轴关卡</span><h2 id="platform-entry-title">水果跳跳乐</h2><p>← → 左右移动，Space跳跃，J发射水果。跳上平台，抵达城堡！</p><p>${affordable ? '3颗桃心 · 20只小怪 · 可以踩怪和打蚊子' : `还差${ENTRY_COST-save.diamonds}个钻石，先做几道口算吧！`}</p></div>
+    <div><span class="little-eyebrow">第1关 · 青芽果园 · 2屏卷轴关卡</span><h2 id="platform-entry-title">水果跳跳乐</h2><p>← → 左右移动，Space跳跃，J发射水果。跳上平台，抵达城堡！</p><p>${affordable ? '3颗桃心 · 20只小怪 · 可以踩怪和打蚊子' : `还差${ENTRY_COST-save.diamonds}个钻石，先做几道口算吧！`}</p></div>
     <div class="platform-entry-actions"><button class="primary-button" data-action="platform-start" ${!affordable || platformStarting ? 'disabled' : ''}>${platformStarting ? '正在准备果园…' : '开始冒险 · 10钻石'}</button>${active ? `<button class="text-button" data-action="platform-resume">继续${getHero(save.platformRun.heroId).name}的冒险（已付费）</button>` : ''}</div>
   </section>`;
 }
@@ -177,7 +177,7 @@ async function startPlatformer() {
     platformController?.destroy(); platformController = null;
     save = next; platformAssets = assets; platformResuming = false; view = 'platform';
     render(); window.scrollTo({ top: 0, behavior: 'instant' });
-    announce('先完成体感校准，也可选择键盘。侧挥转向、举手跳跃、原地跑前进，J发射水果。');
+    announce('先完成体感校准，也可选择键盘。侧挥转向、举手跳跃、原地跑前进，飞翔发射水果，也可按J。');
   } catch (error) {
     if (charged) { save = previous; try { await saveProgress(save); } catch {} }
     view = 'lobby'; render(); toast(error.message || '果园暂时没能打开，请稍后再试。');
@@ -207,7 +207,7 @@ function renderHistory() {
 }
 
 function renderDecomposition(question, show) {
-  if (question.operation === 'complement') return '<div class="hint-space" aria-hidden="true"></div>';
+  if (question.operation === 'complement') return `<div class="hint-space ${show?'visible':''}" id="decomposition" aria-hidden="${!show}"><div class="oral-hint"><span class="method-tag">凑满10个</span><div class="ten-frame" role="img" aria-label="共有10个圆点，已知${question.a}个，数一数空心圆点还剩几个">${Array.from({length:10},(_,i)=>`<i class="${i<question.a?'filled':''}" aria-hidden="true"></i>`).join('')}</div><span class="complement-cue">数一数<br>空心的有几个？</span></div></div>`;
   const hundredHint = getHundredHint(question);
   if (hundredHint && hundredHint.method !== 'carry') return `<div class="hint-space place-hint ${show ? 'visible' : ''}" id="decomposition" aria-hidden="${!show}"><div class="oral-hint" role="img" aria-label="${hundredHint.description}"><span class="method-tag">${hundredHint.title}</span><div class="oral-steps">${hundredHint.steps.map(step => `<span>${step}</span>`).join('')}</div></div></div>`;
   if (question.operation === 'subtract') return renderBreakTen(question, show);
@@ -249,7 +249,7 @@ function renderGame(animate = false) {
   const feedback = round.feedback;
   const complement = question.operation === 'complement';
   const equationLabel = complement ? `${question.a}加几等于10` : `${question.a}${question.operation === 'subtract' ? '减' : '加'}${question.b}等于多少`;
-  const showHint = feedback ? feedback.elapsedMs >= HINT_DELAY : hasHint(round);
+  const showHint = hasHint(round);
   const hero = getHero(round.heroId);
   const enemy = getEnemy(question.enemyId);
   const feedbackState = getFeedbackState(round);
@@ -258,7 +258,7 @@ function renderGame(animate = false) {
   const stateClass = feedback ? `animate-${feedback.correct ? 'correct' : 'wrong'}` : '';
   app.innerHTML = `
     <section class="game-card ${feedback ? 'answered' : ''}" aria-label="${question.lesson ? getMode(question.lesson).name : complement ? '10的分解' : question.operation === 'subtract' ? '破十减法' : '凑十加法'}答题游戏">
-      <span class="question-progress">第${round.index + 1}/10题</span>
+      <span class="question-progress">第${round.index + 1}/10题<button class="hint-button ${showHint?'is-open':''}" data-action="toggle-hint" aria-label="${showHint?'收起解题提示':'显示解题提示'}" title="${showHint?'收起提示':'点亮小灯泡看提示'}" aria-controls="decomposition" aria-expanded="${showHint}" ${feedback?'disabled':''}>💡</button></span>
       <div class="arena ${stateClass}" style="--feedback-age:${feedbackState?.age || 0}ms;--flight-duration:${feedback?.flightDuration || 750}ms;--impact-delay:${feedback?.impactDelay || IMPACT_DELAY}ms;--volley-tail:${volleyTail}ms;--last-impact-delay:${feedback?.lastImpactDelay || feedback?.impactDelay || IMPACT_DELAY}ms" aria-label="${hero.name}对战${enemy.name}">
         <span class="arena-spark spark-one" aria-hidden="true">✦</span><span class="arena-spark spark-two" aria-hidden="true">✦</span>
         <div class="fighter hero"><span class="grass"></span>${animal(hero)}</div>
@@ -273,7 +273,7 @@ function renderGame(animate = false) {
         let chosen = feedback && feedback.choice === option ? (feedback.correct ? ' chosen-correct' : ' chosen-wrong') : '';
         return `<button class="answer-button${chosen}" data-answer="${option}" ${feedback ? 'disabled' : ''} aria-label="答案${option}">${option}</button>`;
       }).join('')}</div>
-      <div class="game-footer">${feedback ? `<p class="feedback-message ${feedback.correct ? 'correct' : 'wrong'}" role="status">${feedback.correct ? (feedback.diamonds && feedback.rewardCollected !== false ? `答对啦！获得${feedback.diamonds}个钻石` : '答对啦！') : (feedback.penalty ? '答错啦，扣除1个钻石，再试一次！' : '答错啦，再试一次！')}</p>${feedback.correct ? `<span class="auto-next-note">${round.index === 9 ? '马上查看成绩…' : '马上开始下一题…'}</span>` : ''}` : (round.retryMessage ? `<p class="feedback-message">${round.retryMessage}</p>` : '')}</div>
+      <div class="game-footer">${feedback ? `<p class="feedback-message ${feedback.correct ? 'correct' : 'wrong'}" role="status">${feedback.correct ? (feedback.diamonds && feedback.rewardCollected !== false ? `答对啦！获得${feedback.diamonds}个钻石` : '答对啦！') : `再试一次，本题还可得${feedback.remainingReward??getReward(true,getWrongAttempts(round))}个钻石。`}</p>${feedback.correct ? `<span class="auto-next-note">${round.index === 9 ? '马上查看成绩…' : '马上开始下一题…'}</span>` : ''}` : `<p class="feedback-message">${round.retryMessage||`慢慢想，本题答对可得${getReward(true,getWrongAttempts(round))}个钻石。`}</p>`}</div>
     </section>`;
   if (feedback) requestAnimationFrame(() => app.querySelector('[data-action="next"]')?.focus({ preventScroll: true }));
   const arenaBox = app.querySelector('.arena').getBoundingClientRect();
@@ -419,10 +419,14 @@ function refreshHint() {
   const round = save?.activeRound;
   if (view !== 'game' || !round || round.status !== 'playing') return;
   const element = document.querySelector('#decomposition');
-  if (element && !element.classList.contains('visible') && hasHint(round)) {
+  const shown=hasHint(round),button=app.querySelector('[data-action="toggle-hint"]');
+  if(button){button.classList.toggle('is-open',shown);button.setAttribute('aria-expanded',String(shown));button.setAttribute('aria-label',shown?'收起解题提示':'显示解题提示');button.title=shown?'收起提示':'点亮小灯泡看提示';}
+  if(element&&!shown){element.classList.remove('visible');element.setAttribute('aria-hidden','true');}
+  if (element && !element.classList.contains('visible') && shown) {
     element.classList.add('visible');
     element.setAttribute('aria-hidden', 'false');
     const question = round.questions[round.index];
+    if(question.operation==='complement'){announce(`共有10个圆点，实心的是已知的${question.a}个，数一数空心圆点还剩几个。`);return;}
     const hundredHint = getHundredHint(question);
     if (hundredHint) { announce(hundredHint.description); return; }
     if (question.operation === 'subtract') {
@@ -449,11 +453,6 @@ async function handleAnswer(choice) {
   const timing = getAttackTiming(distance, previousArena / 2 - previousFighter * .15);
   const next = answerRound(save.activeRound, choice, Date.now(), timing);
   if (!next) return;
-  if (!next.feedback.correct) {
-    next.feedback.penalty = save.diamonds > 0 ? 1 : 0;
-    next.penalties = (next.penalties || 0) + next.feedback.penalty;
-    save.diamonds = Math.max(0, save.diamonds - 1);
-  }
   save.activeRound = next;
   render(true);
   playSound(next.feedback.correct ? 'correct' : 'wrong', next.feedback.impactDelay, next.feedback.projectileIds?.length || 1);
@@ -547,6 +546,7 @@ app.addEventListener('click', event => {
     playSound('tap');
     void persist();
   } else if (button.dataset.answer !== undefined) void handleAnswer(Number(button.dataset.answer));
+  else if(button.dataset.action==='toggle-hint') {if(view!=='game'||refreshStudy())return;save.activeRound=toggleHint(save.activeRound);refreshHint();playSound('tap');void persist();}
   else if (button.dataset.action === 'start') void startRound();
   else if (button.dataset.action === 'platform-start') void startPlatformer();
   else if (button.dataset.action === 'platform-resume') void resumePlatformer();
@@ -607,8 +607,8 @@ async function boot() {
   }
   refreshStudy();
   render();
-  setInterval(() => { refreshStudy(); refreshHint(); refreshFeedback(); }, 1000);
-  setInterval(() => { refreshHint(); refreshFeedback(); }, 50);
+  setInterval(() => { refreshStudy(); refreshFeedback(); }, 1000);
+  setInterval(refreshFeedback, 50);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 void boot();

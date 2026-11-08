@@ -2,7 +2,7 @@ export const ENTRY_COST=10, FRUIT_RESPAWN=10000, MONSTER_TOTAL=20, MONSTER_LIMIT
 export const VIEW={width:1024,height:576};
 export const CHASE={range:176,verticalRange:56,duration:5000,cooldown:3000,speedFactor:1.5};
 export const FRUIT_KINDS=['apple','banana','pear','orange','grapes','strawberry','cherry'];
-export const PHYSICS={speed:76.8,gravity:1350,jump:700,width:28,height:36,invulnerable:1500,shotTiles:8,shotSpeed:300,shotCooldown:450};
+export const PHYSICS={speed:115.2,gravity:1350,jump:700,width:28,height:36,invulnerable:1500,shotTiles:8,shotSpeed:300,shotCooldown:450};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const center=o=>({x:o.x+o.w/2,y:o.y+o.h/2});
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
@@ -46,7 +46,7 @@ export function refillMonsters(state,level){
   }
 }
 export function createPlatformRun(heroId,level,random=Math.random,id=globalThis.crypto.randomUUID()){
-  const state={version:3,mapRevision:level.revision,layoutVersion:level.layoutVersion,id,levelId:level.id,levelIndex:0,heroId,entryPaid:ENTRY_COST,status:'playing',monsterTotal:MONSTER_TOTAL,hearts:3,elapsedMs:0,ammo:[],fruitRefreshPaused:false,monsters:[],fruits:[],shots:[],nextShotAt:0,invulnerableUntil:0,jumpQueuedUntil:-1,coyoteUntil:100,player:{x:level.spawn.x-14,y:level.spawn.y-36,w:28,h:36,vy:0,dir:1,grounded:true},collected:0};
+  const state={version:3,mapRevision:level.revision,layoutVersion:level.layoutVersion,worldWidth:level.width,id,levelId:level.id,levelIndex:0,heroId,entryPaid:ENTRY_COST,status:'playing',monsterTotal:MONSTER_TOTAL,hearts:3,elapsedMs:0,ammo:[],fruitRefreshPaused:false,monsters:[],fruits:[],shots:[],nextShotAt:0,invulnerableUntil:0,jumpQueuedUntil:-1,coyoteUntil:100,player:{x:level.spawn.x-14,y:level.spawn.y-36,w:28,h:36,vy:0,dir:1,grounded:true},collected:0};
   state.monsters=level.monsterSpawns.map((s,i)=>({id:`monster-${i}`,kind:s.kind,x:s.x-15,y:s.y-34,baseY:s.y-34,w:30,h:34,dir:-1,speed:s.kind==='mosquito'?48:38+i%3*4,minX:s.kind==='mosquito'?s.x-85:Math.max(s.surface.x,s.x-96),maxX:s.kind==='mosquito'?s.x+55:Math.min(s.surface.x+s.surface.w-30,s.x+96),surfaceMin:s.surface.x,surfaceMax:s.surface.x+s.surface.w-30,alive:true,active:false,chaseUntil:0,cooldownUntil:0}));
   refillMonsters(state,level);
   state.fruits=level.points.map((p,i)=>({id:`fruit-${i}`,kind:pick(FRUIT_KINDS,random),x:p.x,y:p.y,active:true,respawnAt:0}));
@@ -66,19 +66,35 @@ export function normalizePlatformRun(v){
   if(v.mapRevision!=='scroll-1'||v.monsterTotal!==20||v.monsters.length!==20||v.monsters.filter(m=>m.alive&&m.active).length>MONSTER_LIMIT)return null;
   if(!v.monsters.every(m=>typeof m.active==='boolean'&&[m.baseY,m.surfaceMin,m.surfaceMax,m.chaseUntil,m.cooldownUntil].every(Number.isFinite)&&m.surfaceMin<=m.surfaceMax&&m.chaseUntil>=0&&m.cooldownUntil>=0&&(m.exitUntil===undefined||Number.isFinite(m.exitUntil))))return null;
   if(!v.shots.every(s=>FRUIT_KINDS.includes(s.kind)&&[s.x,s.y,s.fromX,s.fromY,s.born,s.dir,s.distance].every(Number.isFinite)&&[-1,1].includes(s.dir)&&s.distance>=0&&s.distance<=8*32))return null;
-  if(v.player.x<32||v.player.x+28>10208||v.player.y<32||v.player.y+36>544)return null;
+  const worldWidth=v.worldWidth??10240;
+  if(!Number.isInteger(worldWidth)||worldWidth<1024||worldWidth>10240||worldWidth%32!==0)return null;
+  if(v.player.x<32||v.player.x+28>worldWidth-32||v.player.y<32||v.player.y+36>544)return null;
   return {...structuredClone(v),fruitRefreshPaused:v.ammo.length>5?true:v.ammo.length<5?false:v.fruitRefreshPaused??false};
 }
 export function upgradePlatformRun(run,level){
   if(run.version===3){
     const copy=structuredClone(run);
-    if(copy.layoutVersion!==level.layoutVersion){
+    if((copy.worldWidth??10240)!==level.width){
+      const oldWidth=copy.worldWidth??10240,fresh=createPlatformRun(copy.heroId,level,Math.random,copy.id);
+      const progress=clamp((copy.player.x-level.tile)/(oldWidth-2*level.tile-copy.player.w),0,1);
+      copy.player.x=level.tile+progress*(level.width-2*level.tile-copy.player.w);
+      delete copy.player.surfaceId;copy.shots=[];
+      copy.monsters=fresh.monsters.map(monster=>{
+        const previous=copy.monsters.find(m=>m.id===monster.id);
+        return {...monster,alive:previous?.alive??true,active:false};
+      });
+      copy.fruits=fresh.fruits.map(fruit=>{
+        const previous=copy.fruits.find(f=>f.id===fruit.id);
+        return previous?{...previous,x:fruit.x,y:fruit.y}:fruit;
+      });
+      refillMonsters(copy,level);
+    }else if(copy.layoutVersion!==level.layoutVersion){
       for(const fruit of copy.fruits){
         const point=level.points[Number(fruit.id?.replace('fruit-',''))];
         if(point){fruit.x=point.x;fruit.y=point.y;}
       }
-      copy.layoutVersion=level.layoutVersion;
     }
+    copy.layoutVersion=level.layoutVersion;copy.worldWidth=level.width;
     return copy;
   }
   const next=createPlatformRun(run.heroId,level,Math.random,run.id);

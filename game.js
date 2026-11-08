@@ -19,8 +19,6 @@ export const ENEMIES = [
   { id: 'tiger', name: '小老虎', col: 1, row: 1 },
   { id: 'wolf', name: '小狼', col: 2, row: 1 },
 ];
-export const HINT_DELAY = 10_000;
-export const FAST_REWARD_DEADLINE = 5_000;
 export const ROUND_LENGTH = 10;
 export const ATTACK_DURATION = getAttackTiming().attackDuration;
 export const DIAMOND_DURATION = 1670;
@@ -107,6 +105,9 @@ export function createRound(heroId, now = Date.now(), random = Math.random, mode
     questionStartedAt: now,
     status: 'playing',
     feedback: null,
+    rewardRule: 'accuracy-v1',
+    wrongAttempts: {},
+    hintedQuestions: [],
   };
 }
 
@@ -123,16 +124,23 @@ export function getBreakTen(question) {
   return { tens: 10, ones: question.a - 10, subtrahend: question.b, afterSubtract: 10 - question.b };
 }
 
-export function hasHint(round, now = Date.now()) {
-  if (round.questions?.[round.index]?.operation === 'complement') return false;
-  return now - round.questionStartedAt >= HINT_DELAY;
+export function hasHint(round) {
+  return Array.isArray(round.hintedQuestions)&&round.hintedQuestions.includes(round.index);
 }
 
-export function getReward(correct, elapsedMs) {
+export function toggleHint(round) {
+  if(round.status!=='playing')return round;
+  const shown=hasHint(round),indices=Array.isArray(round.hintedQuestions)?round.hintedQuestions:[];
+  return {...round,hintedQuestions:shown?indices.filter(i=>i!==round.index):[...indices,round.index]};
+}
+
+export function getWrongAttempts(round,index=round.index) {
+  const count=round.wrongAttempts?.[index];return Number.isSafeInteger(count)&&count>0?count:0;
+}
+
+export function getReward(correct, wrongCount=0) {
   if (!correct) return 0;
-  if (elapsedMs <= FAST_REWARD_DEADLINE) return 3;
-  if (elapsedMs <= HINT_DELAY) return 2;
-  return 1;
+  return Math.max(0,3-Math.max(0,Math.floor(wrongCount)||0));
 }
 
 export function answerRound(round, choice, now = Date.now(), timing = getAttackTiming()) {
@@ -141,7 +149,8 @@ export function answerRound(round, choice, now = Date.now(), timing = getAttackT
   if (!question.options.includes(choice)) return null;
   const elapsedMs = Math.max(0, now - round.questionStartedAt);
   const correct = choice === question.answer;
-  const diamonds = getReward(correct, elapsedMs);
+  const previousWrong=getWrongAttempts(round),wrongCount=previousWrong+(correct?0:1);
+  const diamonds = getReward(correct, previousWrong);
   const hadMistake = (round.mistakes || []).includes(round.index) || round.answers.some(answer => !answer.correct && answer.questionIndex === round.index);
   const projectileIds = correct ? (hadMistake ? [pickProjectile().id] : createVolley(elapsedMs)) : [];
   const volleyTail = Math.max(0, projectileIds.length - 1) * VOLLEY_STAGGER;
@@ -158,6 +167,8 @@ export function answerRound(round, choice, now = Date.now(), timing = getAttackT
     projectileIds,
     elapsedMs,
     diamonds,
+    wrongCount,
+    remainingReward:getReward(true,wrongCount),
     answeredAt: now,
     rewardCollected: diamonds === 0,
     enemyId: question.enemyId,
@@ -169,6 +180,8 @@ export function answerRound(round, choice, now = Date.now(), timing = getAttackT
     ...round,
     status: 'feedback',
     feedback,
+    rewardRule:'accuracy-v1',
+    wrongAttempts:{...(round.wrongAttempts||{}),[round.index]:wrongCount},
     mistakes: correct ? (round.mistakes || []) : [...new Set([...(round.mistakes || []), round.index])],
     answers: correct ? [...round.answers, feedback] : round.answers,
   };
@@ -209,7 +222,7 @@ export function advanceRound(round, now = Date.now()) {
 
 export function retryRound(round) {
   if (round.status !== 'feedback' || round.feedback?.correct) return round;
-  return { ...round, status: 'playing', feedback: null, mistakes: [...new Set([...(round.mistakes || []), round.index])], answers: round.answers.filter(a => a.correct || a.questionIndex !== round.index), retryMessage: '再想一想，选出正确答案吧！' };
+  return { ...round, status: 'playing', feedback: null, mistakes: [...new Set([...(round.mistakes || []), round.index])], answers: round.answers.filter(a => a.correct || a.questionIndex !== round.index), retryMessage: `再想一想，本题还可得${getReward(true,getWrongAttempts(round))}个钻石。` };
 }
 
 export function summarizeRound(round) {

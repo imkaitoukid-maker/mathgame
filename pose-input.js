@@ -6,19 +6,24 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // Recognition updates renew a short lease. The game consumes it at its own fixed frame rate.
 export class PoseInput {
   constructor(direction=1){this.direction=direction;this.clear(-Infinity);}
-  clear(now){this.after=now;this.lastSample=-Infinity;this.lastReceived=-Infinity;this.lastMotion=-Infinity;this.runUntil=-Infinity;this.cadence=40;this.jumpPending=false;this.tracked=false;this.seen={};}
+  clear(now){this.after=now;this.lastSample=-Infinity;this.lastReceived=-Infinity;this.lastMotion=-Infinity;this.runUntil=-Infinity;this.fireUntil=-Infinity;this.flightConfirmed=false;this.cadence=40;this.jumpPending=false;this.tracked=false;this.seen={};}
   receive({result,timestamp,receivedAt,lastRunMotion=-Infinity}){
     if(!Number.isFinite(timestamp)||!Number.isFinite(receivedAt)||timestamp<=this.after||timestamp<=this.lastSample||timestamp>receivedAt+5||receivedAt-timestamp>POSE_TIMING.staleFrame)return false;
     if(this.lastSample!==-Infinity)this.cadence=this.cadence*.8+clamp(timestamp-this.lastSample,16,250)*.2;
     this.lastSample=timestamp;this.lastReceived=receivedAt;
     this.tracked=!!result?.upperBody&&result.quality>=.48;
-    if(!this.tracked){this.runUntil=-Infinity;this.jumpPending=false;return true;}
+    if(!this.tracked){this.runUntil=-Infinity;this.fireUntil=-Infinity;this.flightConfirmed=false;this.jumpPending=false;return true;}
     const events=(result.events??[]).filter(e=>Number.isFinite(e.time)&&e.time>this.after&&e.time>=timestamp-600&&e.time<=timestamp+5&&(this.seen[e.id]??-Infinity)<e.time);
     for(const e of events){this.seen[e.id]=e.time;}
     const jump=events.some(e=>e.id==='raise-both');
     if(jump)this.jumpPending=true;
     else if(events.some(e=>e.id==='throw-left'))this.direction=-1;
     else if(events.some(e=>e.id==='throw-right'))this.direction=1;
+    const flightEvent=events.some(e=>e.id==='fly'),flightActive=result.active?.includes('fly');
+    if(flightEvent)this.flightConfirmed=true;
+    if(jump||result.active?.includes('raise-both')||!flightEvent&&!flightActive)this.flightConfirmed=false;
+    // Briefly bridge missing frames; the game's existing cooldown limits each shot.
+    this.fireUntil=this.flightConfirmed?timestamp+clamp(this.cadence*3,180,350):-Infinity;
     const running=result.active?.includes('run')||events.some(e=>e.id==='run');
     // Active state alone must not renew movement after the person's arms stop.
     if(running&&lastRunMotion>this.after&&lastRunMotion>this.lastMotion&&lastRunMotion<=timestamp&&timestamp-lastRunMotion<500){
@@ -28,9 +33,9 @@ export class PoseInput {
   }
   read(now){
     const tracked=this.tracked&&now-this.lastReceived<POSE_TIMING.silence;
-    if(!tracked){this.runUntil=-Infinity;this.jumpPending=false;}
+    if(!tracked){this.runUntil=-Infinity;this.fireUntil=-Infinity;this.flightConfirmed=false;this.jumpPending=false;}
     const jump=tracked&&this.jumpPending;this.jumpPending=false;
-    return {facing:this.direction,move:tracked&&now<this.runUntil?this.direction:0,jump,tracked};
+    return {facing:this.direction,move:tracked&&now<this.runUntil?this.direction:0,jump,fire:tracked&&now<this.fireUntil,tracked};
   }
 }
 
