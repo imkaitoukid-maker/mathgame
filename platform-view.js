@@ -1,7 +1,8 @@
-import { parseLevel, stepPlatform, queueJump, ENTRY_COST, FRUIT_KINDS, MONSTER_LIMIT, monsterProgress, refillMonsters, VIEW, cameraFor, upgradePlatformRun } from './platform-engine.js';
+import { parseLevel, stepPlatform, queueJump, ENTRY_COST, FRUIT_KINDS, monsterProgress, VIEW, cameraFor, upgradePlatformRun } from './platform-engine.js';
 import { getProjectile } from './projectiles.js';
 import {PoseInput} from './pose-input.js';
 import {createPoseSession} from './pose-session.js';
+import {mountGameFullscreen} from './fullscreen.js';
 export const PLATFORM_LEVELS=['orchard-1'];
 let sharedPromise;
 const heroImages=new Map();
@@ -27,10 +28,9 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
   const poseInput=new PoseInput(state.player.dir);
   const input={left:false,right:false,jump:false,fire:false},heldKeys=new Set(),touchInputs=new Map();
   let fireQueued=false;
-  refillMonsters(state,level);
   const effects=[];
   container.innerHTML=`<section class="platformer-card" aria-label="水果跳跳乐，第1关">
-    <div class="platform-hud"><h1>第1关 · ${level.title}</h1><div class="platform-hearts" role="img" aria-label="剩余3颗桃心"></div><div class="platform-counts"><span class="platform-ammo">🍎 水果 <b>0</b><small class="platform-refresh-badge" hidden>刷新暂停</small></span><span class="platform-enemies">击败 <b>0/${monsterProgress(state).total}</b></span><span class="platform-active">场上 <b>0/${MONSTER_LIMIT}</b></span><button class="platform-pause" aria-label="暂停游戏">Ⅱ</button></div></div>
+    <div class="platform-hud"><h1>第1关 · ${level.title}</h1><div class="platform-hearts" role="img" aria-label="剩余3颗桃心"></div><div class="platform-counts"><span class="platform-ammo">🍎 水果 <b>0</b><small class="platform-refresh-badge" hidden>刷新暂停</small></span><span class="platform-enemies">击败 <b>0/${monsterProgress(state).total}</b></span><span class="platform-active">剩余 <b>${monsterProgress(state).active}</b></span><button class="platform-fullscreen-button" aria-label="游戏全屏" aria-pressed="false">⛶ 全屏</button><button class="platform-pause" aria-label="暂停游戏">Ⅱ</button></div></div>
     <div class="platform-route"><span>🌱 起点</span><div role="progressbar" aria-label="前往城堡的进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div><b class="platform-distance">0%</b><span>🏰 城堡</span></div>
     <div class="platform-stage"><canvas id="platform-canvas" tabindex="0" role="application" aria-label="${heroName}的卷轴果园，左方向键向左，右方向键向右，松开停止，Space跳跃，J发射水果"></canvas><div class="platform-overlay" hidden role="dialog" aria-label="游戏暂停"><div class="platform-modal"><div class="platform-modal-icon" aria-hidden="true">🌱</div><h2></h2><p></p><button class="primary-button" data-platform-resume>继续冒险</button><button class="primary-button" data-platform-retry>再玩一局 · 10钻石</button><button class="text-button" data-platform-home>返回首页</button></div></div></div>
     <div class="platform-instructions"><strong><kbd>←</kbd> 向左　<kbd>→</kbd> 向右 · 松开停止</strong><span><kbd>Space</kbd> 跳跃　<kbd>J</kbd> 发射 · 8格射程</span><span class="platform-paid">本局已付10钻石</span></div>
@@ -84,7 +84,7 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
     if(hearts.innerHTML!==health)hearts.innerHTML=health;
     hearts.setAttribute('aria-label',`剩余${state.hearts}颗桃心`);
     const progress=monsterProgress(state);
-    ammo.textContent=state.ammo.length;enemies.textContent=`${progress.defeated}/${progress.total}`;active.textContent=`${progress.active}/${MONSTER_LIMIT}`;
+    ammo.textContent=state.ammo.length;enemies.textContent=`${progress.defeated}/${progress.total}`;active.textContent=String(progress.active);
     container.querySelector('.platform-refresh-badge').hidden=!state.fruitRefreshPaused;
     ammo.parentElement.title=state.fruitRefreshPaused?'水果刷新已暂停，库存低于5个恢复':'吃掉的水果10秒后刷新';
     const percent=state.status==='won'?100:Math.max(0,Math.min(99,Math.floor((state.player.x-level.spawn.x+14)/(level.goal.x+48-level.spawn.x)*100)));
@@ -112,6 +112,11 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
   }
   function clearInput(){heldKeys.clear();touchInputs.clear();syncInput();fireQueued=false;poseInput.clear(performance.now());}
   function setPaused(value){if(!value&&calibrationOpen)return;clearInput();paused=value;if(!calibrationOpen)poseSession.setSuspended(value);last=performance.now();accumulator=0;showOverlay();saveNow();}
+  const fullscreen=mountGameFullscreen(container,container.querySelector('.platform-fullscreen-button'),active=>{
+    clearInput();last=performance.now();accumulator=0;
+    if(!active&&state.status==='playing'&&!calibrationOpen)setPaused(true);
+    (calibrationOpen?poseStart:canvas).focus({preventScroll:true});
+  });
   poseStart.addEventListener('click',()=>{if(!disposed)void poseSession.start();});
   container.querySelector('[data-pose-keyboard]').addEventListener('click',()=>{poseSession.stop();poseEnabled=false;calibrationOpen=false;poseModal.hidden=true;poseButton.textContent='体感校准';setPaused(false);canvas.focus({preventScroll:true});});
   poseButton.addEventListener('click',()=>{
@@ -120,6 +125,8 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
   const focusCanvas=event=>{if(event.button===0)canvas.focus({preventScroll:true});};
   const key=event=>{
     if(event.target?.closest?.('button,input,select,textarea'))return;
+    if(event.code==='KeyF'){event.preventDefault();if(!event.repeat)void fullscreen.toggle();return;}
+    if(event.code==='Escape'&&fullscreen.isActive())return;
     if(calibrationOpen)return;
     if(event.code==='Escape'&&state.status==='playing'){event.preventDefault();if(!event.repeat)setPaused(!paused);return;}
     if(paused||state.status!=='playing')return;
@@ -250,6 +257,6 @@ export function mountPlatformer(container,{run,assets,heroName,resuming=false,on
     raf=requestAnimationFrame(tick);
   }
   hud();showOverlay();raf=requestAnimationFrame(tick);if(calibrationOpen)poseStart.focus({preventScroll:true});else if(!paused)canvas.focus({preventScroll:true});
-  if(run.version!==state.version||run.layoutVersion!==state.layoutVersion)saveNow();
-  return {snapshot,pause:()=>setPaused(true),destroy(){clearInput();disposed=true;poseSession.stop();cancelAnimationFrame(raf);canvas.removeEventListener('pointerdown',focusCanvas);window.removeEventListener('keydown',key);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',visibility);}};
+  if(run.version!==state.version||run.layoutVersion!==state.layoutVersion||run.monsterRule!==state.monsterRule)saveNow();
+  return {snapshot,pause:()=>setPaused(true),destroy(){clearInput();disposed=true;fullscreen.destroy();poseSession.stop();cancelAnimationFrame(raf);canvas.removeEventListener('pointerdown',focusCanvas);window.removeEventListener('keydown',key);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',blur);document.removeEventListener('visibilitychange',visibility);}};
 }

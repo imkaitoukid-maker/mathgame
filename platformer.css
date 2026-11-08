@@ -15,6 +15,7 @@
 .platform-ammo,.platform-enemies,.platform-active { background: #f4eedb; padding: 7px 12px; border-radius: 18px; }
 .platform-refresh-badge { margin-left: 5px; font-size: 11px; color: #b57a45; }
 .platform-pause { width: 43px; height: 40px; border: 2px solid #cbb18e; border-radius: 13px; background: #fff6dd; color: #82563b; font-size: 22px; }
+.platform-fullscreen-button { min-height: 40px; border: 2px solid #c7d7ae; border-radius: 13px; padding: 6px 11px; background: #edf4e1; color: #697e48; font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .platform-pose { border: 1px solid #c7d7ae; background: #edf4e1; color: #798c57; border-radius: 12px; padding: 9px; font: inherit; font-size: 12px; white-space: nowrap; }
 .pose-calibration { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: #6f795b66; backdrop-filter: blur(5px); }
 .pose-calibration[hidden] { display: none; }
@@ -51,3 +52,21 @@
 @media(max-width:900px) { .platform-entry { flex-wrap: wrap; }.platform-entry-actions { margin-left: 0; width: 100%; }.platform-hud { gap: 10px; padding: 10px; }.platform-counts { gap: 8px; font-size: 14px; }.platform-hearts { font-size: 27px; gap: 2px; }.platform-ammo,.platform-enemies { padding: 6px 8px; }.platform-instructions { flex-wrap: wrap; justify-content: center; gap: 7px 18px; }.platform-message { width: 100%; text-align: center; order: 3; } }
 @media(max-width:600px) { .platform-entry { padding: 18px; gap: 14px; justify-content: center; text-align: center; }.platform-entry-art { flex-basis: 140px; height: 120px; }.platform-entry-art .animal-art { width: 120px; height: 120px; }.platform-entry h2 { font-size: 24px; }.platform-entry p { font-size: 13px; }.platformer-card { border-radius: 16px; }.platform-hud { flex-wrap: wrap; justify-content: center; gap: 6px 14px; }.platform-counts { margin-left: 0; }.platform-hud h1 { font-size: 17px; }.platform-hearts { font-size: 25px; }.platform-pause { width: 32px; height: 29px; font-size: 17px; border-radius: 9px; }.platform-instructions { padding: 9px; font-size: 11px; }.platform-instructions strong { font-size: 14px; }.platform-paid { font-size: 11px; }.platform-modal { padding: 10px 14px; max-width: 330px; border-radius: 20px; }.platform-modal-icon { display: none; }.platform-modal h2 { font-size: 21px; margin: 5px 0; }.platform-modal p { font-size: 12px; margin: 6px 0; }.platform-modal .primary-button { font-size: 14px; padding: 7px 12px; margin: 7px auto; }.platform-modal .text-button { font-size: 12px; margin: 5px auto; } }
 @media(max-height:600px) and (orientation:landscape) { .platformer-card { max-width: min(1280px,calc((100svh - 165px)*16/9)); }.platform-mode .site-header { min-height: 58px; }.platform-hud { padding: 5px 8px; gap: 7px; }.platform-hud h1 { font-size: 16px; }.platform-hearts { font-size: 22px; }.platform-counts { font-size: 12px; gap: 6px; }.platform-pause { width: 28px; height: 27px; font-size: 16px; }.platform-instructions { min-height: 30px; padding: 6px 8px; }.platform-instructions strong { font-size: 13px; }.platform-message { display: none; }.platform-paid { font-size: 10px; } }
+
+/* The world keeps its 16:9 aspect ratio; HUD and controls overlay the TV picture. */
+body.platform-fullscreen-open { overflow: hidden; }
+#app.platform-fullscreen { position: fixed; inset: 0; z-index: 100; width: 100vw; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; overflow: hidden; background: #182e2b; }
+.platform-fullscreen::backdrop { background: #182e2b; }
+.platform-fullscreen .platformer-card { position: relative; width: 100%; height: 100%; max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; background: #182e2b; }
+.platform-fullscreen .platform-stage { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; background: #182e2b; }
+.platform-fullscreen #platform-canvas { object-fit: contain; }
+.platform-fullscreen .platform-hud { position: absolute; z-index: 2; top: max(10px,env(safe-area-inset-top)); left: max(12px,env(safe-area-inset-left)); right: max(12px,env(safe-area-inset-right)); padding: 8px 14px; border-radius: 18px; background: #fffaf0ed; box-shadow: 0 2px 12px #26462b22; }
+.platform-fullscreen .platform-hud h1 { font-size: clamp(16px,1.8vw,28px); }
+.platform-fullscreen .platform-counts { font-size: clamp(13px,1.4vw,22px); }
+.platform-fullscreen .platform-route,.platform-fullscreen .platform-instructions { display: none; }
+.platform-fullscreen .platform-bottom { display: none; }
+.platform-fullscreen .platform-message { flex: 1 1 180px; width: auto; order: 0; text-align: left; }
+.platform-fullscreen .platform-touch-controls { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.platform-fullscreen .platform-touch-controls button { padding: 8px 13px; }
+.platform-fullscreen .platform-overlay { z-index: 3; }
+@media(max-width:600px) { .platform-counts { flex-wrap: wrap; justify-content: center; }.platform-fullscreen-button { min-height: 31px; padding: 4px 8px; font-size: 12px; }.platform-fullscreen .platform-hud { gap: 5px; padding: 6px; }.platform-fullscreen .platform-counts { gap: 5px; }.platform-fullscreen .platform-bottom { padding: 6px; }.platform-fullscreen .platform-message { display: none; }.platform-fullscreen .platform-touch-controls { margin: auto; gap: 5px; }.platform-fullscreen .platform-touch-controls button { padding: 7px; font-size: 12px; } }

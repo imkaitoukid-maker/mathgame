@@ -1,4 +1,4 @@
-export const ENTRY_COST=10, FRUIT_RESPAWN=10000, MONSTER_TOTAL=20, MONSTER_LIMIT=5, MONSTER_EXIT_MS=1100;
+export const ENTRY_COST=10, FRUIT_RESPAWN=10000, MONSTER_TOTAL=20, MONSTER_LIMIT=20, MONSTER_EXIT_MS=1100;
 export const VIEW={width:1024,height:576};
 export const CHASE={range:176,verticalRange:56,duration:5000,cooldown:3000,speedFactor:1.5};
 export const FRUIT_KINDS=['apple','banana','pear','orange','grapes','strawberry','cherry'];
@@ -34,21 +34,13 @@ export function parseLevel(map){
 
 export function cameraFor(state,level){return clamp(state.player.x-VIEW.width*.32,0,level.width-VIEW.width);}
 export function monsterProgress(state){return {total:state.monsterTotal??state.monsters.length,active:state.monsters.filter(m=>m.alive&&m.active!==false).length,defeated:state.monsters.filter(m=>!m.alive).length,pending:state.monsters.filter(m=>m.alive&&m.active===false).length};}
-// Actors outside the camera sleep; they retain health and position.
-export function refillMonsters(state,level){
-  if(state.status!=='playing')return;
-  const left=cameraFor(state,level)-64,right=left+VIEW.width+128;
-  for(const m of state.monsters)if(m.alive&&(m.x+m.w<left||m.x>right))m.active=false;
-  const exiting=state.monsters.filter(m=>!m.alive&&(m.exitUntil??0)>state.elapsedMs).length;
-  let occupied=monsterProgress(state).active+exiting;
-  for(const m of state.monsters.filter(m=>m.alive&&!m.active&&m.x+m.w>=left&&m.x<=right).sort((a,b)=>a.x-b.x)){
-    if(occupied>=MONSTER_LIMIT)break;m.active=true;occupied++;state.events?.push({type:'spawn'});
-  }
+// Old saves may contain sleeping actors; restore only the original survivors once.
+export function restoreMonsterActivity(state){
+  for(const monster of state.monsters)monster.active=monster.alive;
 }
 export function createPlatformRun(heroId,level,random=Math.random,id=globalThis.crypto.randomUUID()){
-  const state={version:3,mapRevision:level.revision,layoutVersion:level.layoutVersion,worldWidth:level.width,id,levelId:level.id,levelIndex:0,heroId,entryPaid:ENTRY_COST,status:'playing',monsterTotal:MONSTER_TOTAL,hearts:3,elapsedMs:0,ammo:[],fruitRefreshPaused:false,monsters:[],fruits:[],shots:[],nextShotAt:0,invulnerableUntil:0,jumpQueuedUntil:-1,coyoteUntil:100,player:{x:level.spawn.x-14,y:level.spawn.y-36,w:28,h:36,vy:0,dir:1,grounded:true},collected:0};
-  state.monsters=level.monsterSpawns.map((s,i)=>({id:`monster-${i}`,kind:s.kind,x:s.x-15,y:s.y-34,baseY:s.y-34,w:30,h:34,dir:-1,speed:s.kind==='mosquito'?48:38+i%3*4,minX:s.kind==='mosquito'?s.x-85:Math.max(s.surface.x,s.x-96),maxX:s.kind==='mosquito'?s.x+55:Math.min(s.surface.x+s.surface.w-30,s.x+96),surfaceMin:s.surface.x,surfaceMax:s.surface.x+s.surface.w-30,alive:true,active:false,chaseUntil:0,cooldownUntil:0}));
-  refillMonsters(state,level);
+  const state={version:3,mapRevision:level.revision,layoutVersion:level.layoutVersion,worldWidth:level.width,monsterRule:'fixed-v1',id,levelId:level.id,levelIndex:0,heroId,entryPaid:ENTRY_COST,status:'playing',monsterTotal:MONSTER_TOTAL,hearts:3,elapsedMs:0,ammo:[],fruitRefreshPaused:false,monsters:[],fruits:[],shots:[],nextShotAt:0,invulnerableUntil:0,jumpQueuedUntil:-1,coyoteUntil:100,player:{x:level.spawn.x-14,y:level.spawn.y-36,w:28,h:36,vy:0,dir:1,grounded:true},collected:0};
+  state.monsters=level.monsterSpawns.map((s,i)=>({id:`monster-${i}`,kind:s.kind,x:s.x-15,y:s.y-34,baseY:s.y-34,w:30,h:34,dir:-1,speed:s.kind==='mosquito'?48:38+i%3*4,minX:s.kind==='mosquito'?s.x-85:Math.max(s.surface.x,s.x-96),maxX:s.kind==='mosquito'?s.x+55:Math.min(s.surface.x+s.surface.w-30,s.x+96),surfaceMin:s.surface.x,surfaceMax:s.surface.x+s.surface.w-30,alive:true,active:true,chaseUntil:0,cooldownUntil:0}));
   state.fruits=level.points.map((p,i)=>({id:`fruit-${i}`,kind:pick(FRUIT_KINDS,random),x:p.x,y:p.y,active:true,respawnAt:0}));
   return state;
 }
@@ -87,14 +79,13 @@ export function upgradePlatformRun(run,level){
         const previous=copy.fruits.find(f=>f.id===fruit.id);
         return previous?{...previous,x:fruit.x,y:fruit.y}:fruit;
       });
-      refillMonsters(copy,level);
     }else if(copy.layoutVersion!==level.layoutVersion){
       for(const fruit of copy.fruits){
         const point=level.points[Number(fruit.id?.replace('fruit-',''))];
         if(point){fruit.x=point.x;fruit.y=point.y;}
       }
     }
-    copy.layoutVersion=level.layoutVersion;copy.worldWidth=level.width;
+    copy.layoutVersion=level.layoutVersion;copy.worldWidth=level.width;copy.monsterRule='fixed-v1';restoreMonsterActivity(copy);
     return copy;
   }
   const next=createPlatformRun(run.heroId,level,Math.random,run.id);
@@ -191,7 +182,7 @@ export function stepPlatform(state,level,dt,random=Math.random,input={}){
   state.events=[];if(state.status!=='playing')return state.events;
   dt=clamp(dt,0,1/30);state.elapsedMs+=dt*1000;
   const oldFeet=state.player.y+state.player.h;
-  advancePlayer(state,level,dt,input);refillMonsters(state,level);advanceMonsters(state,dt);refreshFruits(state,level,random);
+  advancePlayer(state,level,dt,input);advanceMonsters(state,dt);refreshFruits(state,level,random);
   const p=state.player,pc=center(p);
   for(const f of state.fruits)if(f.active&&Math.abs(f.x-pc.x)<p.w/2+11&&Math.abs(f.y-pc.y)<p.h/2+11){
     f.active=false;f.respawnAt=state.elapsedMs+FRUIT_RESPAWN;state.ammo.push(f.kind);state.collected++;state.events.push({type:'collect',x:f.x,y:f.y});
@@ -204,7 +195,6 @@ export function stepPlatform(state,level,dt,random=Math.random,input={}){
     }else if(overlap(p,m))hurt(state,'monster');
     if(state.status!=='playing')break;
   }
-  refillMonsters(state,level);
   if(state.status==='playing'&&p.x+p.w>=level.goal.x+48&&p.y+p.h>level.goal.y+80){state.status='won';state.events.push({type:'won'});}
   return state.events;
 }

@@ -137,7 +137,7 @@ function renderPlatformEntry() {
   const affordable = save.diamonds >= ENTRY_COST;
   return `<section class="platform-entry" aria-labelledby="platform-entry-title">
     <div class="platform-entry-art">${animal(getHero(save.selectedHero))}</div>
-    <div><span class="little-eyebrow">第1关 · 青芽果园 · 2屏卷轴关卡</span><h2 id="platform-entry-title">水果跳跳乐</h2><p>← → 左右移动，Space跳跃，J发射水果。跳上平台，抵达城堡！</p><p>${affordable ? '3颗桃心 · 20只小怪 · 可以踩怪和打蚊子' : `还差${ENTRY_COST-save.diamonds}个钻石，先做几道口算吧！`}</p></div>
+    <div><span class="little-eyebrow">第1关 · 青芽果园 · 2屏卷轴关卡</span><h2 id="platform-entry-title">水果跳跳乐</h2><p>← → 左右移动，Space跳跃，J发射水果。跳上平台，抵达城堡！</p><p>${affordable ? '3颗桃心 · 20只小怪，击败不重生 · 可以踩怪和打蚊子' : `还差${ENTRY_COST-save.diamonds}个钻石，先做几道口算吧！`}</p></div>
     <div class="platform-entry-actions"><button class="primary-button" data-action="platform-start" ${!affordable || platformStarting ? 'disabled' : ''}>${platformStarting ? '正在准备果园…' : '开始冒险 · 10钻石'}</button>${active ? `<button class="text-button" data-action="platform-resume">继续${getHero(save.platformRun.heroId).name}的冒险（已付费）</button>` : ''}</div>
   </section>`;
 }
