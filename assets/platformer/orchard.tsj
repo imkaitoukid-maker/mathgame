@@ -1,0 +1,29 @@
+{
+  "columns": 3,
+  "image": "tiles.svg",
+  "imageheight": 32,
+  "imagewidth": 96,
+  "margin": 0,
+  "name": "青芽果园拼块",
+  "spacing": 0,
+  "tilecount": 3,
+  "tiledversion": "1.11.0",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "tileset",
+  "version": "1.10",
+  "tiles": [
+    {
+      "id": 0,
+      "type": "grass"
+    },
+    {
+      "id": 1,
+      "type": "wall"
+    },
+    {
+      "id": 2,
+      "type": "ceiling"
+    }
+  ]
+}

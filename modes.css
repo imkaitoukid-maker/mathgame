@@ -1,0 +1,21 @@
+.mode-choices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; max-width: 960px; margin: 0 auto 28px; }
+.mode-choice { border: 2px solid #eadfce; border-radius: 22px; background: #fffdf8; padding: 17px 12px; color: #765135; cursor: pointer; font-family: inherit; }
+.mode-choice strong { display: block; font-size: 20px; margin-bottom: 5px; line-height: 1.5; }
+.mode-choice span { font-size: 14px; color: #9a816a; }
+.mode-choice.selected { border-color: #79be88; background: #edf9e9; box-shadow: 0 3px 0 #cee7c6; }
+.mode-choice:focus-visible { outline: 3px solid #eebc58; outline-offset: 3px; }
+.resume-mode { font-size: 14px; color: #93775c; }
+.equation.wide { font-size: clamp(64px, 8.3vw, 130px); }
+.break-step { fill: #684631; font-family: inherit; font-size: 44px; font-weight: 800; }
+.lesson-groups { max-width: 960px; margin: 0 auto; text-align: left; }
+.lesson-group h2 { font-size: 20px; color: #79583e; margin: 18px 0 10px; }
+.lesson-group .mode-choices { margin-bottom: 14px; }
+.mode-example { display: block; margin-top: 5px; color: #75916d !important; font-weight: 700; }
+.oral-motto { background: #f0f8e9; color: #7d8f69; border-radius: 18px; padding: 12px 18px; margin: 12px auto 24px; max-width: 960px; font-size: 15px; line-height: 1.8; }
+.mobile-break { display: none; }
+.oral-hint { height: 100%; display: flex; justify-content: center; align-items: center; gap: 24px; padding: 4px; color: #684631; }
+.method-tag { background: #e3f7dc; border-radius: 20px; padding: 10px 14px; font-size: 20px; font-weight: 800; white-space: nowrap; }
+.oral-steps { display: grid; gap: 1px; text-align: left; font-size: 22px; line-height: 1.3; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media(max-width:700px) { .mode-choices { gap: 10px; margin-bottom: 22px; } .mode-choice { padding: 13px 9px; border-radius: 18px; } .mode-choice strong { font-size: 17px; line-height: 1.5; } .mode-choice span { font-size: 11px; } .equation.wide { font-size: clamp(43px, 11vw, 72px); letter-spacing: -1px; } }
+@media(max-width:700px) { .mode-choices { grid-template-columns: 1fr; } .mode-choice { padding: 10px 12px; } .mode-choice strong { margin-bottom: 0; } }
+@media(max-width:700px) { .lesson-group h2 { font-size: 17px; margin-top: 16px; } .oral-motto { font-size: 12px; padding: 10px 8px; } .mobile-break { display: block; } .oral-hint { gap: 10px; } .method-tag { font-size: 13px; padding: 7px 9px; } .oral-steps { font-size: 16px; line-height: 1.4; } }

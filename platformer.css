@@ -1,0 +1,53 @@
+.platform-entry { max-width: 1100px; margin: 26px auto; display: flex; align-items: center; gap: 24px; border: 2px solid #e8dfc9; border-radius: 28px; background: #fffefa; padding: 20px 26px; }
+.platform-entry-art { flex: 0 0 180px; height: 150px; border-radius: 23px; background: #e7f5d8 url('./assets/platformer/orchard-background.png') center/cover; display: flex; align-items: end; justify-content: center; }
+.platform-entry-art .animal-art { width: 140px; height: 140px; }
+.platform-entry h2 { font-size: 29px; margin: 0 0 8px; }
+.platform-entry p { color: #96785b; font-size: 15px; line-height: 1.7; margin: 5px 0; }
+.platform-entry-actions { margin-left: auto; display: grid; gap: 12px; justify-items: center; }
+.platform-entry .primary-button { font-size: 19px; padding: 14px 22px; min-width: 0; white-space: nowrap; }
+.platform-entry button:disabled { opacity: .55; cursor: default; box-shadow: none; }
+.platformer-card { width: 100%; max-width: min(1280px,calc((100svh - 285px)*16/9)); margin: 0 auto 24px; border: 2px solid #e7dcc5; background: #fffaf0; border-radius: 26px; overflow: hidden; box-shadow: 0 5px 20px #916d3512; }
+.platform-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 14px; }
+.platform-hud h1 { font-size: clamp(18px,2vw,24px); margin: 0; color: #70482e; }
+.platform-hearts { display: flex; gap: 5px; color: #ef98af; font-size: 35px; line-height: 1; text-shadow: 1px 1px #aa6472; }
+.platform-hearts .empty { color: #e2dacf; text-shadow: none; }
+.platform-counts { display: flex; gap: 12px; margin-left: auto; align-items: center; color: #7e5a3d; font-size: 16px; font-weight: 700; white-space: nowrap; }
+.platform-ammo,.platform-enemies,.platform-active { background: #f4eedb; padding: 7px 12px; border-radius: 18px; }
+.platform-refresh-badge { margin-left: 5px; font-size: 11px; color: #b57a45; }
+.platform-pause { width: 43px; height: 40px; border: 2px solid #cbb18e; border-radius: 13px; background: #fff6dd; color: #82563b; font-size: 22px; }
+.platform-pose { border: 1px solid #c7d7ae; background: #edf4e1; color: #798c57; border-radius: 12px; padding: 9px; font: inherit; font-size: 12px; white-space: nowrap; }
+.pose-calibration { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: #6f795b66; backdrop-filter: blur(5px); }
+.pose-calibration[hidden] { display: none; }
+.pose-modal { width: min(780px,100%); max-height: calc(100svh - 32px); overflow: auto; padding: 26px 30px 20px; border: 3px solid #e4d6ba; border-radius: 30px; background: #fffdf3; box-shadow: 0 14px 60px #4d563333; text-align: center; }
+.pose-eyebrow { font-size: 13px; color: #91a36e; }.pose-modal h2 { margin: 8px 0 10px; font-size: 30px; color: #775238; }.pose-intro { color: #a08a68; font-size: 14px; line-height: 1.6; margin: 0 auto 18px; }
+.pose-calibration-body { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; text-align: left; }
+.pose-preview { position: relative; aspect-ratio: 4/3; border: 2px dashed #c7d6b1; border-radius: 20px; background: #edf4e1; overflow: hidden; }
+.pose-preview video { width: 100%; height: 100%; object-fit: contain; background: #e4edd7; }.pose-preview video.mirrored { transform: scaleX(-1); }
+.pose-preview-placeholder { position: absolute; inset: 0; display: grid; align-content: center; text-align: center; color: #91a477; font-size: 15px; line-height: 1.8; }.pose-preview.has-video .pose-preview-placeholder { display: none; }
+.pose-guide { display: grid; gap: 8px; }.pose-guide div { display: grid; align-content: center; gap: 3px; padding: 10px 14px; background: #f4efdf; border-radius: 13px; }.pose-guide b { font-size: 16px; color: #816445; }.pose-guide span { color: #a08a68; font-size: 13px; }
+.pose-status { min-height: 22px; color: #899760; font-size: 14px; margin: 16px 0 8px; }.pose-progress { display: block; width: 100%; height: 9px; accent-color: #a6c57b; }
+.pose-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 20px; margin-top: 16px; }.pose-actions .primary-button { font-size: 18px; min-width: 0; padding: 12px 22px; }.pose-actions .primary-button:disabled { opacity: .6; cursor: wait; }
+.pose-local-note { font-size: 11px; color: #b09f82; line-height: 1.6; margin: 12px 0 0; }
+@media(max-width:600px) { .pose-modal { padding: 18px 16px 14px; border-radius: 22px; }.pose-modal h2 { font-size: 24px; }.pose-calibration-body { grid-template-columns: 1fr; gap: 10px; }.pose-preview { max-width: 230px; width: 100%; margin: auto; }.pose-guide { grid-template-columns: 1fr 1fr; gap: 6px; }.pose-guide div { padding: 8px; }.pose-guide b { font-size: 13px; }.pose-guide span { font-size: 12px; }.pose-intro { font-size: 12px; }.pose-actions .primary-button { font-size: 15px; padding: 10px 15px; } }
+.platform-stage { position: relative; aspect-ratio: 16/9; width: 100%; background: #d8f0dc; }
+#platform-canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; outline-offset: -4px; cursor: pointer; }
+.platform-route { display: flex; align-items: center; gap: 9px; padding: 0 16px 8px; color: #9b815c; font-size: 12px; }
+.platform-route [role=progressbar] { flex: 1; height: 7px; background: #e9e5cc; border-radius: 8px; overflow: hidden; }
+.platform-route i { display: block; height: 100%; background: #a9ce84; border-radius: 8px; }
+.platform-distance { min-width: 28px; text-align: right; }
+.platform-instructions kbd { background: #f2e7cf; padding: 3px 7px; border: 1px solid #decbac; border-radius: 6px; font-family: inherit; color: #805d40; }
+.platform-bottom { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; padding: 0 14px 10px; font-size: 12px; color: #9b815c; }
+.platform-touch-controls { display: flex; gap: 7px; flex-shrink: 0; }
+.platform-touch-controls button { touch-action: none; user-select: none; background: #edf3df; border: 1px solid #cadbb1; border-radius: 10px; color: #7b8b5c; padding: 7px 10px; font: inherit; font-weight: bold; }
+.platform-touch-controls button:active { background: #d2e6b8; transform: translateY(1px); }
+.platform-instructions { display: flex; align-items: center; gap: 15px; justify-content: space-between; padding: 13px 18px; color: #987954; font-size: 13px; min-height: 50px; }
+.platform-instructions strong { color: #82633e; font-size: 18px; white-space: nowrap; }
+.platform-paid { white-space: nowrap; font-size: 12px; }
+.platform-overlay { position: absolute; inset: 0; display: grid; place-items: center; background: #667b5933; backdrop-filter: blur(3px); padding: 15px; }
+.platform-modal { max-width: 490px; width: 100%; text-align: center; padding: 25px 28px; border: 3px solid #e3d3b8; border-radius: 30px; background: #fffdf3; box-shadow: 0 8px 30px #5b62402b; }
+.platform-modal-icon { font-size: 42px; }.platform-modal h2 { margin: 10px 0; font-size: 29px; }.platform-modal p { color: #9a7e61; line-height: 1.6; margin: 12px 0 20px; }
+.platform-modal button { display: block; margin: 12px auto; }.platform-modal .primary-button { min-width: 0; font-size: 20px; padding: 13px 22px; }.platform-modal button:disabled { opacity: .6; cursor: default; }
+.platform-mode .site-header { min-height: 75px; padding-top: 6px; padding-bottom: 6px; }
+@media(max-width:900px) { .platform-entry { flex-wrap: wrap; }.platform-entry-actions { margin-left: 0; width: 100%; }.platform-hud { gap: 10px; padding: 10px; }.platform-counts { gap: 8px; font-size: 14px; }.platform-hearts { font-size: 27px; gap: 2px; }.platform-ammo,.platform-enemies { padding: 6px 8px; }.platform-instructions { flex-wrap: wrap; justify-content: center; gap: 7px 18px; }.platform-message { width: 100%; text-align: center; order: 3; } }
+@media(max-width:600px) { .platform-entry { padding: 18px; gap: 14px; justify-content: center; text-align: center; }.platform-entry-art { flex-basis: 140px; height: 120px; }.platform-entry-art .animal-art { width: 120px; height: 120px; }.platform-entry h2 { font-size: 24px; }.platform-entry p { font-size: 13px; }.platformer-card { border-radius: 16px; }.platform-hud { flex-wrap: wrap; justify-content: center; gap: 6px 14px; }.platform-counts { margin-left: 0; }.platform-hud h1 { font-size: 17px; }.platform-hearts { font-size: 25px; }.platform-pause { width: 32px; height: 29px; font-size: 17px; border-radius: 9px; }.platform-instructions { padding: 9px; font-size: 11px; }.platform-instructions strong { font-size: 14px; }.platform-paid { font-size: 11px; }.platform-modal { padding: 10px 14px; max-width: 330px; border-radius: 20px; }.platform-modal-icon { display: none; }.platform-modal h2 { font-size: 21px; margin: 5px 0; }.platform-modal p { font-size: 12px; margin: 6px 0; }.platform-modal .primary-button { font-size: 14px; padding: 7px 12px; margin: 7px auto; }.platform-modal .text-button { font-size: 12px; margin: 5px auto; } }
+@media(max-height:600px) and (orientation:landscape) { .platformer-card { max-width: min(1280px,calc((100svh - 165px)*16/9)); }.platform-mode .site-header { min-height: 58px; }.platform-hud { padding: 5px 8px; gap: 7px; }.platform-hud h1 { font-size: 16px; }.platform-hearts { font-size: 22px; }.platform-counts { font-size: 12px; gap: 6px; }.platform-pause { width: 28px; height: 27px; font-size: 16px; }.platform-instructions { min-height: 30px; padding: 6px 8px; }.platform-instructions strong { font-size: 13px; }.platform-message { display: none; }.platform-paid { font-size: 10px; } }

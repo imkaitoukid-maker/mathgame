@@ -1,0 +1,9 @@
+Tool: built-in image_gen.imagegen
+Transparent background: true
+
+Use case: style-transfer. Asset type: transparent 2D game hero sprite atlas.
+Restyle ONLY the three ORIGINAL HEROES from the TOP ROW of image 1, using image 2 as the STYLE REFERENCE. Image 1 contains 6 characters; its bottom-row fox, tiger, wolf are irrelevant and MUST NOT appear. Image 2's eight chibi stickers are a style reference only, do not copy their animal identities.
+Deliver one transparent PNG sprite strip, exact 3:1 landscape, 1536x512, one row of 3 equal square 512x512 cells: LEFT the original cream-white bunny with pink inner ears and mint-green neckerchief; CENTER the original sunny yellow chick with tiny orange beak and orange feet and light cream belly; RIGHT the original pastel pink pig with round pink snout, little curly tail and tiny hooves. Preserve their identities, colors, accessories, rightward orientation and small raised-arm poses. Only change drawing style.
+Match image 2's visual language closely: very rounded large heads and chubby simple bodies, tiny dot/oval eyes, restrained small smiling mouths, stubby limbs, gently uneven thick warm colored outlines, flat soft pastel fills, subtle gentle shading at most, minimal internal detail. Cute calm sticker-like cartoon animals. The bunny should still have its mint scarf. Do not keep the strongly textured watercolor paint or dramatic eyebrows of image 1. Do not add sprouts, hats, clothing or new decorations.
+All 3 are complete full-body standalone cutouts, with transparent separation between cells, no ground, no shadows, no meadow, no text, no gray backdrop or copied screenshot artifacts. Each centered within its own equal-width square cell, fully contained, around 400px maximum body width and 420px maximum height, feet aligned near y=448/512. Clean true alpha background. Retain the recognizable original characters while making them look as though the artist of image 2 drew them.
+

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fff9ee">
+  <meta name="description" content="选一个可爱的动物伙伴，用凑十法和破十法练习加减法，收集闪闪钻石！">
+  <title>凑十大冒险 · 20以内加法</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./projectiles.css">
+  <link rel="stylesheet" href="./companions.css">
+  <link rel="stylesheet" href="./volume.css">
+  <link rel="stylesheet" href="./study.css">
+  <link rel="stylesheet" href="./modes.css">
+  <link rel="stylesheet" href="./platformer.css">
+  <link rel="preload" href="./assets/animals.png" as="image">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" id="brand-home" aria-label="凑十大冒险，返回首页">
+      <span class="math-logo" aria-hidden="true"><i>+</i><i>−</i><i>×</i><i>÷</i></span>
+      <span class="brand-name">凑十大冒险</span><span class="brand-divider"></span><span class="brand-subtitle">20以内加法</span>
+    </a>
+    <nav class="header-actions" aria-label="游戏工具">
+      <span class="diamond-balance" aria-label="累计钻石"><svg class="diamond" viewBox="0 0 48 42" aria-hidden="true"><path d="M12 3h24l10 12-22 24L2 15Z" fill="#b89aff" stroke="#9870dc" stroke-width="3" stroke-linejoin="round"/><path d="m12 3 6 12 6 24 6-24 6-12M2 15h44M18 15 24 3l6 12" fill="none" stroke="#d9c4ff" stroke-width="2.5"/></svg><b id="diamond-total">0</b></span>
+      <button class="icon-button" id="home-button" aria-label="返回首页" title="返回首页"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m3 15 13-11 13 11M7 13v15h7v-9h5v9h7V13" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="volume-control">
+        <button class="icon-button" id="sound-button" aria-label="关闭声音" aria-pressed="true" title="关闭声音"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12h6l8-7v22l-8-7H4Z" fill="currentColor"/><path class="sound-waves" d="M23 10q7 6 0 12m4-17q11 11 0 22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path class="sound-slash" d="m22 11 7 10m0-10-7 10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+        <button id="volume-settings" aria-label="调节音量" title="调节音量" aria-expanded="false" aria-controls="volume-panel">⌄</button>
+        <div class="volume-panel" id="volume-panel" role="dialog" aria-label="音量调节" hidden>
+          <label for="volume-slider">音量 <output id="volume-value" for="volume-slider">150%</output></label>
+          <input id="volume-slider" type="range" min="0" max="200" step="10" value="150" aria-label="音量" aria-valuetext="150%">
+          <div class="volume-scale"><span>0%</span><span>100%</span><span>200%</span></div>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <main id="app" aria-busy="true"><div class="loading">小伙伴正在准备冒险<span>⋯</span></div></main>
+  <p class="toast" id="toast" role="status" hidden></p>
+  <div class="sr-only" id="announcer" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
