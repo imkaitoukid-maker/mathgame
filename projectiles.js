@@ -20,14 +20,15 @@ export const SPEED_FACTOR = .8 * .7;
 export const LAUNCH_DELAY = 100;
 export const KNOCKBACK_DURATION = 450;
 export const VOLLEY_STAGGER = 180;
-export function getProjectileCount(elapsedMs, random = Math.random) {
-  for (const [deadline, count] of [[3000,10],[5000,8],[7000,7],[8000,6],[10000,5],[15000,4],[20000,3]]) {
+export function getProjectileCount(elapsedMs) {
+  // Half of the former volley, rounded up so every correct answer still attacks.
+  for (const [deadline, count] of [[3000,5],[5000,4],[7000,4],[8000,3],[10000,3],[15000,2],[20000,2]]) {
     if (elapsedMs <= deadline) return count;
   }
-  return random() < .5 ? 1 : 2;
+  return 1;
 }
 export function createVolley(elapsedMs, random = Math.random) {
-  return Array.from({ length: getProjectileCount(elapsedMs, random) }, () => pickProjectile(random).id);
+  return Array.from({ length: getProjectileCount(elapsedMs) }, () => pickProjectile(random).id);
 }
 export function getAttackTiming(distance = 1, referenceDistance = 1) {
   const flightDuration = Math.ceil(600 * Math.max(1, distance) / Math.max(1, referenceDistance) / SPEED_FACTOR);
